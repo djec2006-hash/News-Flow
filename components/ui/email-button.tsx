@@ -4,9 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Mail, Loader2, Check } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-// Utiliser le stub temporaire si les packages email ne sont pas installés
-// Remplacer par "@/app/actions/send-email" après installation
-import { sendFlowEmail } from "@/app/actions/send-email-stub"
+import { sendFlowEmail } from "@/app/actions/send-email"
 import { motion, AnimatePresence } from "framer-motion"
 
 interface EmailButtonProps {

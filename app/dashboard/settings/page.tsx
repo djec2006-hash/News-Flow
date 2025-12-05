@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { getPlanConfig } from "@/lib/plans"
 import { useToast } from "@/hooks/use-toast"
+import { updateInterests } from "@/app/actions/update-interests"
 
 const INTEREST_CATEGORIES = [
   { id: "crypto", label: "Crypto & Web3", icon: "₿", color: "border-orange-500/50 bg-orange-500/10 text-orange-400" },
@@ -154,23 +155,33 @@ export default function SettingsPage() {
       if (tempSelectedInterests.includes("sport")) domains.push("Culture, médias & sport")
       if (tempSelectedInterests.includes("culture")) domains.push("Culture, médias & sport")
 
-      await supabase
-        .from("content_preferences")
-        .update({
-          general_domains: [...new Set(domains)], // Déduplique
-          updated_at: new Date().toISOString(),
-        })
-        .eq("user_id", user.id)
-
-      setSelectedInterests([...tempSelectedInterests])
-      setDialogOpen(false)
+      const uniqueDomains = [...new Set(domains)] // Déduplique
       
-      toast({
-        title: "✅ Centres d'intérêt mis à jour",
-        description: "Vos préférences ont été enregistrées avec succès",
-      })
+      console.log("[Settings] 🎯 Saving interests:", uniqueDomains)
+
+      // Utiliser la Server Action pour sauvegarder
+      const result = await updateInterests(uniqueDomains)
+
+      if (result.success) {
+        setSelectedInterests([...tempSelectedInterests])
+        setDialogOpen(false)
+        
+        toast({
+          title: "✅ Centres d'intérêt mis à jour",
+          description: "Vos préférences ont été enregistrées avec succès",
+        })
+        
+        console.log("[Settings] ✅ Interests saved successfully")
+      } else {
+        console.error("[Settings] ❌ Error:", result.error)
+        toast({
+          title: "❌ Erreur",
+          description: result.message,
+          variant: "destructive",
+        })
+      }
     } catch (err) {
-      console.error(err)
+      console.error("[Settings] Unexpected error:", err)
       toast({
         title: "❌ Erreur",
         description: "Impossible de sauvegarder vos préférences",

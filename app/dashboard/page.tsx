@@ -68,6 +68,7 @@ export default function DashboardPage() {
 
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
+  const [generationPhase, setGenerationPhase] = useState<"idle" | "enhancing" | "generating" | "finalizing">("idle")
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const [preferences, setPreferences] = useState<any>(null)
@@ -172,6 +173,16 @@ export default function DashboardPage() {
   async function handleGenerateFlow() {
     try {
       setGenerating(true)
+      
+      // Phase 1: Enrichissement de la demande (si instruction fournie)
+      if (dailyInstruction && dailyInstruction.trim().length > 0) {
+        setGenerationPhase("enhancing")
+        // Petit délai pour montrer l'état d'enrichissement
+        await new Promise(resolve => setTimeout(resolve, 800))
+      }
+      
+      // Phase 2: Génération du Flow
+      setGenerationPhase("generating")
 
       const response = await fetch("/api/generate-flow", {
         method: "POST",
@@ -187,11 +198,15 @@ export default function DashboardPage() {
         throw new Error(errorData.error || "Erreur lors de la génération")
       }
 
+      // Phase 3: Finalisation
+      setGenerationPhase("finalizing")
       const data = await response.json()
 
       toast({
         title: "✨ Flow généré",
-        description: "Votre Flow a été généré avec succès !",
+        description: dailyInstruction 
+          ? "Votre demande a été enrichie par l'IA et votre Flow est prêt !"
+          : "Votre Flow a été généré avec succès !",
       })
 
       setDailyInstruction("")
@@ -228,6 +243,21 @@ export default function DashboardPage() {
       })
     } finally {
       setGenerating(false)
+      setGenerationPhase("idle")
+    }
+  }
+
+  // Messages d'état pour chaque phase de génération
+  const getGenerationMessage = () => {
+    switch (generationPhase) {
+      case "enhancing":
+        return { icon: "🧠", text: "Optimisation de votre demande par l'IA..." }
+      case "generating":
+        return { icon: "⚡", text: "Génération de votre Flow personnalisé..." }
+      case "finalizing":
+        return { icon: "✨", text: "Finalisation en cours..." }
+      default:
+        return { icon: "🚀", text: "Générer maintenant" }
     }
   }
 
@@ -474,27 +504,39 @@ export default function DashboardPage() {
                 </Label>
                 <Textarea
                   id="instruction"
-                  placeholder="Ex: Focus sur les marchés asiatiques aujourd'hui..."
+                  placeholder="Ex: actus crypto, focus marchés asiatiques, analyse Tesla..."
                   value={dailyInstruction}
                   onChange={(e) => setDailyInstruction(e.target.value)}
                   rows={3}
                   className="w-full rounded-xl bg-zinc-950/50 border-white/10 text-white placeholder:text-zinc-500 focus:border-indigo-500/50 focus:ring-indigo-500/50 resize-none"
+                  disabled={generating}
                 />
+                {dailyInstruction && !generating && (
+                  <p className="text-xs text-indigo-400 mt-2 flex items-center gap-1">
+                    <span>🧠</span>
+                    <span>Votre demande sera enrichie automatiquement par l'IA</span>
+                  </p>
+                )}
               </div>
 
-              <motion.div whileTap={{ scale: 0.98 }} className="relative inline-block">
-                <div className="absolute -inset-1 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-xl blur opacity-30 group-hover:opacity-50 animate-pulse" />
+              <motion.div whileTap={{ scale: generating ? 1 : 0.98 }} className="relative inline-block">
+                <div className={`absolute -inset-1 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-xl blur opacity-30 ${generating ? 'animate-pulse' : 'group-hover:opacity-50'}`} />
                 <Button
                   onClick={handleGenerateFlow}
                   disabled={generating || !canGenerateFlow}
                   size="lg"
-                  className="relative bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white font-semibold rounded-xl px-8 py-6 shadow-lg shadow-indigo-500/20"
+                  className="relative bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white font-semibold rounded-xl px-8 py-6 shadow-lg shadow-indigo-500/20 min-w-[280px]"
                 >
                   {generating ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Génération en cours...
-                    </>
+                    <motion.div 
+                      className="flex items-center gap-2"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span>{getGenerationMessage().text}</span>
+                    </motion.div>
                   ) : (
                     <>
                       <Sparkles className="mr-2 h-5 w-5" />
@@ -503,6 +545,77 @@ export default function DashboardPage() {
                   )}
                 </Button>
               </motion.div>
+
+              {/* Barre de progression visuelle pendant la génération */}
+              {generating && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-4 p-4 rounded-xl bg-zinc-800/50 border border-white/10"
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex items-center gap-2">
+                      {generationPhase === "enhancing" && (
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                          className="text-xl"
+                        >
+                          🧠
+                        </motion.div>
+                      )}
+                      {generationPhase === "generating" && (
+                        <motion.div
+                          animate={{ scale: [1, 1.2, 1] }}
+                          transition={{ duration: 1, repeat: Infinity }}
+                          className="text-xl"
+                        >
+                          ⚡
+                        </motion.div>
+                      )}
+                      {generationPhase === "finalizing" && (
+                        <motion.div
+                          animate={{ rotate: [0, 15, -15, 0] }}
+                          transition={{ duration: 0.5, repeat: Infinity }}
+                          className="text-xl"
+                        >
+                          ✨
+                        </motion.div>
+                      )}
+                    </div>
+                    <span className="text-sm text-zinc-300">{getGenerationMessage().text}</span>
+                  </div>
+                  
+                  {/* Barre de progression */}
+                  <div className="h-1.5 bg-zinc-700 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"
+                      initial={{ width: "0%" }}
+                      animate={{ 
+                        width: generationPhase === "enhancing" 
+                          ? "25%" 
+                          : generationPhase === "generating" 
+                            ? "75%" 
+                            : "95%" 
+                      }}
+                      transition={{ duration: 0.5 }}
+                    />
+                  </div>
+                  
+                  {/* Étapes */}
+                  <div className="flex justify-between mt-2 text-xs text-zinc-500">
+                    <span className={generationPhase === "enhancing" ? "text-indigo-400" : ""}>
+                      Enrichissement IA
+                    </span>
+                    <span className={generationPhase === "generating" ? "text-purple-400" : ""}>
+                      Génération
+                    </span>
+                    <span className={generationPhase === "finalizing" ? "text-pink-400" : ""}>
+                      Finalisation
+                    </span>
+                  </div>
+                </motion.div>
+              )}
             </div>
           </div>
         </motion.div>

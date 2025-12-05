@@ -18,6 +18,8 @@ import {
   Gem, 
   Leaf 
 } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import { updateInterests } from "@/app/actions/update-interests"
 
 const EXPERTISE_LEVELS = [
   {
@@ -109,6 +111,7 @@ const OBJECTIVES = [
 export default function OnboardingPage() {
   const router = useRouter()
   const supabase = createClient()
+  const { toast } = useToast()
   const [step, setStep] = useState(1)
   const [direction, setDirection] = useState(1)
 
@@ -167,8 +170,10 @@ export default function OnboardingPage() {
       const selectedObj = OBJECTIVES.find((obj) => obj.id === selectedObjective)
       const generalDomains = selectedObj?.domains || []
 
+      console.log("[Onboarding] 🚀 Saving profile and preferences...")
+
       // Update profile
-      await supabase
+      const { error: profileError } = await supabase
         .from("profiles")
         .upsert(
           {
@@ -183,22 +188,43 @@ export default function OnboardingPage() {
           { onConflict: "id" },
         )
 
-      // Update content preferences
-      await supabase
-        .from("content_preferences")
-        .upsert(
-          {
-            user_id: user.id,
-            general_domains: generalDomains,
-            financial_markets: [],
-            regions: [],
-            receive_daily_email: false,
-            email_time_local: null,
-            allow_on_demand_recaps: true,
-            max_on_demand_per_week: 2,
-          },
-          { onConflict: "user_id" },
-        )
+      if (profileError) {
+        console.error("[Onboarding] ❌ Profile error:", profileError)
+        throw profileError
+      }
+
+      console.log("[Onboarding] ✅ Profile saved")
+
+      // Update content preferences via Server Action
+      const interestsResult = await updateInterests(generalDomains)
+      
+      if (!interestsResult.success) {
+        console.error("[Onboarding] ❌ Interests error:", interestsResult.error)
+        // Fallback: essayer avec le client Supabase directement
+        await supabase
+          .from("content_preferences")
+          .upsert(
+            {
+              user_id: user.id,
+              general_domains: generalDomains,
+              financial_markets: [],
+              regions: [],
+              receive_daily_email: false,
+              email_time_local: null,
+              allow_on_demand_recaps: true,
+              max_on_demand_per_week: 2,
+            },
+            { onConflict: "user_id" },
+          )
+      }
+
+      console.log("[Onboarding] ✅ Preferences saved:", generalDomains)
+
+      // Afficher le toast de succès
+      toast({
+        title: "✅ Préférences sauvegardées",
+        description: "Votre profil a été créé avec succès !",
+      })
 
       // Attendre 2 secondes pour l'animation
       setTimeout(() => {
@@ -206,6 +232,11 @@ export default function OnboardingPage() {
       }, 2000)
     } catch (err) {
       console.error("[Onboarding] Erreur:", err)
+      toast({
+        title: "❌ Erreur",
+        description: "Une erreur est survenue lors de la création du profil.",
+        variant: "destructive",
+      })
       setIsSubmitting(false)
     }
   }

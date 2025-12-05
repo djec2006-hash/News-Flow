@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { createClient } from "@/lib/supabase/client"
+import { updateEmailSettings, getEmailSettings } from "@/app/actions/update-email-settings"
 
 const DAYS_OF_WEEK = [
   { id: 1, short: "L", full: "Lundi" },
@@ -30,7 +30,6 @@ const HOUR_OPTIONS = Array.from({ length: 48 }, (_, i) => {
 
 export default function EmailConfigPage() {
   const { toast } = useToast()
-  const supabase = createClient()
   
   // États du formulaire
   const [enabled, setEnabled] = useState(false)
@@ -38,10 +37,10 @@ export default function EmailConfigPage() {
   const [selectedHour, setSelectedHour] = useState("08:00")
   const [emails, setEmails] = useState<string[]>([])
   const [newEmail, setNewEmail] = useState("")
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
-  // Charger la config existante
+  // Charger la config existante depuis content_preferences via Server Action
   useEffect(() => {
     loadConfig()
   }, [])
@@ -49,23 +48,24 @@ export default function EmailConfigPage() {
   const loadConfig = async () => {
     setLoading(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const { data, error } = await supabase
-        .from("email_config")
-        .select("*")
-        .eq("user_id", user.id)
-        .single()
-
-      if (data) {
-        setEnabled(data.enabled || false)
-        setSelectedDays(data.days || [1, 2, 3, 4, 5])
-        setSelectedHour(data.hour || "08:00")
-        setEmails(data.emails || [])
+      const settings = await getEmailSettings()
+      
+      if (settings) {
+        setEnabled(settings.email_active)
+        setSelectedDays(settings.email_days)
+        setSelectedHour(settings.email_time)
+        setEmails(settings.email_recipients)
+        console.log("[EmailConfig] ✅ Settings loaded:", settings)
+      } else {
+        console.log("[EmailConfig] No existing settings, using defaults")
       }
     } catch (error) {
-      console.error("Error loading config:", error)
+      console.error("[EmailConfig] Error loading config:", error)
+      toast({
+        title: "⚠️ Avertissement",
+        description: "Impossible de charger vos préférences existantes.",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
@@ -130,30 +130,27 @@ export default function EmailConfigPage() {
   const saveConfig = async () => {
     setSaving(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error("Non authentifié")
-
-      const config = {
-        user_id: user.id,
-        enabled,
-        days: selectedDays,
-        hour: selectedHour,
-        emails,
-        updated_at: new Date().toISOString(),
-      }
-
-      const { error } = await supabase
-        .from("email_config")
-        .upsert(config, { onConflict: "user_id" })
-
-      if (error) throw error
-
-      toast({
-        title: "✅ Préférences enregistrées",
-        description: "Votre configuration d'emails a été mise à jour avec succès.",
+      const result = await updateEmailSettings({
+        email_active: enabled,
+        email_days: selectedDays,
+        email_time: selectedHour,
+        email_recipients: emails,
       })
+
+      if (result.success) {
+        toast({
+          title: "✅ Préférences enregistrées",
+          description: result.message,
+        })
+      } else {
+        toast({
+          title: "❌ Erreur",
+          description: result.message,
+          variant: "destructive",
+        })
+      }
     } catch (error) {
-      console.error("Error saving config:", error)
+      console.error("[EmailConfig] Error saving config:", error)
       toast({
         title: "❌ Erreur",
         description: "Impossible de sauvegarder la configuration.",
@@ -408,4 +405,3 @@ export default function EmailConfigPage() {
     </div>
   )
 }
-

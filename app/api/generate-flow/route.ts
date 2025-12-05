@@ -48,6 +48,96 @@ const tvly = tavily({
 // 🔑 Client Groq (initialisé une seule fois)
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "" })
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🧠 AGENT D'ENRICHISSEMENT DES INSTRUCTIONS (Prompt Engineering Automatique)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Transforme une consigne utilisateur simple en prompt d'expert détaillé
+ * Utilise Llama-3.1-8b-instant (modèle rapide) pour l'enrichissement
+ * 
+ * @param rawInstructions - La consigne brute de l'utilisateur (ex: "actus crypto")
+ * @returns La version enrichie et professionnelle de la consigne
+ */
+async function enhanceUserInstructions(rawInstructions: string): Promise<string> {
+  if (!rawInstructions || rawInstructions.trim().length === 0) {
+    return ""
+  }
+
+  console.log("============================================")
+  console.log("[NewsFlow] 🧠 INSTRUCTION ENHANCER - START")
+  console.log("[NewsFlow] 📝 Input brut:", rawInstructions)
+  console.log("============================================")
+
+  try {
+    const enhancementPrompt = `
+Tu es un expert en Prompt Engineering spécialisé dans l'analyse d'actualité et financière de niveau Bloomberg Terminal.
+
+Ta mission UNIQUE : Transformer la demande de l'utilisateur en une consigne d'analyse professionnelle et détaillée.
+
+=== DEMANDE ORIGINALE DE L'UTILISATEUR ===
+"${rawInstructions}"
+
+=== TA TRANSFORMATION ===
+Tu dois enrichir cette demande en ajoutant :
+
+1. **Angles d'attaque précis** : Quels aspects spécifiques analyser ?
+2. **Demandes de chiffres** : Quelles données quantifiées inclure ?
+3. **Contexte temporel** : Quelle période couvrir ? (dernières 24-48h par défaut)
+4. **Impacts à identifier** : Sur qui/quoi les événements ont-ils un impact ?
+5. **Perspectives** : Quels scénarios à court terme envisager ?
+
+=== RÈGLES STRICTES ===
+- Réponds UNIQUEMENT par la consigne reformulée
+- Pas d'introduction, pas de "Voici la consigne enrichie", pas de blabla
+- Commence directement par le contenu de l'instruction enrichie
+- Maximum 150 mots
+- Garde un ton professionnel et direct style terminal financier
+- Si la demande originale est vague (ex: "crypto"), transforme-la en analyse multi-facettes
+
+=== EXEMPLE ===
+Input : "actus crypto"
+Output : "Analyse les mouvements majeurs des dernières 48h sur le marché crypto. Focus sur : (1) BTC et ETH avec prix exacts et variations %, (2) catalyseurs identifiés (ETF, régulation, adoption institutionnelle), (3) altcoins en breakout avec volumes anormaux, (4) sentiment du marché (Fear & Greed Index), (5) événements à venir cette semaine pouvant impacter les cours. Inclus les réactions des principaux acteurs (Saylor, Blackrock, Ark Invest) si pertinent."
+
+=== MAINTENANT, TRANSFORME ===
+`.trim()
+
+    const response = await groq.chat.completions.create({
+      model: "llama-3.1-8b-instant", // Modèle rapide pour l'enrichissement
+      messages: [
+        {
+          role: "system",
+          content: "Tu es un expert en Prompt Engineering. Tu reformules les demandes utilisateur en instructions d'analyse professionnelle. Réponds UNIQUEMENT avec l'instruction enrichie, sans introduction ni commentaire.",
+        },
+        {
+          role: "user",
+          content: enhancementPrompt,
+        },
+      ],
+      temperature: 0.3, // Un peu de créativité mais reste cohérent
+      max_tokens: 300,
+    })
+
+    const enhancedInstructions = response.choices?.[0]?.message?.content?.trim() || ""
+
+    if (!enhancedInstructions) {
+      console.log("[NewsFlow] ⚠️ Enhancement returned empty, using original")
+      return rawInstructions
+    }
+
+    console.log("============================================")
+    console.log("[NewsFlow] ✨ INSTRUCTION ENRICHIE:")
+    console.log(enhancedInstructions)
+    console.log("============================================")
+
+    return enhancedInstructions
+  } catch (error) {
+    console.error("[NewsFlow] ❌ Instruction enhancement failed:", error)
+    // En cas d'erreur, on utilise les instructions originales
+    return rawInstructions
+  }
+}
+
 // 🔎 Va chercher du contexte web récent pour un projet - MODE BREAKING NEWS
 async function fetchProjectContextFromWeb(project: any): Promise<string> {
   if (!process.env.TAVILY_API_KEY) {
@@ -478,7 +568,35 @@ export async function POST(request: Request) {
 
     // Récupération du body
     const body = await request.json().catch(() => null)
-    const extraInstructions = (body?.extraInstructions as string | undefined)?.trim() || ""
+    
+    // Support des deux noms de paramètres (legacy + nouveau)
+    const rawInstructions = (
+      body?.extraInstructions || 
+      body?.daily_instruction || 
+      ""
+    )?.toString().trim()
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🧠 ÉTAPE 1 : ENRICHISSEMENT AUTOMATIQUE DES INSTRUCTIONS
+    // ═══════════════════════════════════════════════════════════════════════════
+    let extraInstructions = ""
+    
+    if (rawInstructions && rawInstructions.length > 0) {
+      console.log("[NewsFlow] 🧠 User provided instructions, enhancing...")
+      
+      // Appel à l'agent d'enrichissement
+      const enhancedInstructions = await enhanceUserInstructions(rawInstructions)
+      
+      // Combiner les versions pour le contexte complet
+      extraInstructions = `
+📋 DEMANDE ORIGINALE : "${rawInstructions}"
+
+🎯 VERSION EXPERT (enrichie par l'IA) :
+${enhancedInstructions}
+`.trim()
+
+      console.log("[NewsFlow] ✅ Instructions enhanced successfully")
+    }
 
     const supabase = await createClient()
 

@@ -19,9 +19,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Edit, ChevronUp, ChevronDown, AlertCircle } from "lucide-react"
+import { Plus, Edit, ChevronUp, ChevronDown, AlertCircle, Sparkles } from "lucide-react"
 import { getPlanConfig } from "@/lib/plans"
-import { useToast } from "@/components/ui/use-toast" // Import useToast hook
+import { useToast } from "@/components/ui/use-toast"
+import { motion } from "framer-motion"
 
 type CustomTopic = {
   id: string
@@ -36,7 +37,7 @@ type CustomTopic = {
   last_interaction_at: string | null
   complexity_level: string
   position: number
-  length_level?: string // Added length_level to CustomTopic type
+  length_level?: string
 }
 
 type Profile = {
@@ -44,69 +45,245 @@ type Profile = {
   plan_type: string
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🎨 TÂCHE 1 : SYSTÈME DE THÈMES COULEURS PAR DOMAINE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+type ThemeColors = {
+  // Couleurs principales
+  primary: string        // Couleur Tailwind (ex: "cyan")
+  // Bordures
+  border: string         // border-{color}-500/50
+  borderHover: string    // hover:border-{color}-400
+  borderFocus: string    // focus:border-{color}-500
+  // Backgrounds
+  bgCard: string         // bg-{color}-500/5
+  bgBadge: string        // bg-{color}-500/10
+  bgButton: string       // Gradient pour boutons
+  bgButtonHover: string  // Gradient hover
+  // Glows et shadows
+  glow: string           // shadow-{color}-500/20
+  glowStrong: string     // shadow-{color}-500/40
+  // Textes
+  text: string           // text-{color}-400
+  textLight: string      // text-{color}-300
+  // Ring
+  ring: string           // ring-{color}-500/50
+  // Switch
+  switchOn: string       // data-[state=checked]:bg-{color}-500
+}
+
+const PROJECT_THEMES: Record<string, ThemeColors> = {
+  // Finance & Marchés - CYAN/BLEU (Trading futuriste)
+  finance: {
+    primary: "cyan",
+    border: "border-cyan-500/50",
+    borderHover: "hover:border-cyan-400",
+    borderFocus: "focus:border-cyan-500",
+    bgCard: "bg-cyan-500/5",
+    bgBadge: "bg-cyan-500/15",
+    bgButton: "bg-gradient-to-r from-cyan-600 to-blue-600",
+    bgButtonHover: "hover:from-cyan-500 hover:to-blue-500",
+    glow: "shadow-cyan-500/20",
+    glowStrong: "shadow-cyan-500/40",
+    text: "text-cyan-400",
+    textLight: "text-cyan-300",
+    ring: "ring-cyan-500/50",
+    switchOn: "data-[state=checked]:bg-cyan-500",
+  },
+  // Économie & Macro - EMERALD/VERT (Croissance)
+  economics: {
+    primary: "emerald",
+    border: "border-emerald-500/50",
+    borderHover: "hover:border-emerald-400",
+    borderFocus: "focus:border-emerald-500",
+    bgCard: "bg-emerald-500/5",
+    bgBadge: "bg-emerald-500/15",
+    bgButton: "bg-gradient-to-r from-emerald-600 to-green-600",
+    bgButtonHover: "hover:from-emerald-500 hover:to-green-500",
+    glow: "shadow-emerald-500/20",
+    glowStrong: "shadow-emerald-500/40",
+    text: "text-emerald-400",
+    textLight: "text-emerald-300",
+    ring: "ring-emerald-500/50",
+    switchOn: "data-[state=checked]:bg-emerald-500",
+  },
+  // Géopolitique & Conflits - ROSE/ROUGE (Alerte)
+  geopolitics: {
+    primary: "rose",
+    border: "border-rose-500/50",
+    borderHover: "hover:border-rose-400",
+    borderFocus: "focus:border-rose-500",
+    bgCard: "bg-rose-500/5",
+    bgBadge: "bg-rose-500/15",
+    bgButton: "bg-gradient-to-r from-rose-600 to-red-600",
+    bgButtonHover: "hover:from-rose-500 hover:to-red-500",
+    glow: "shadow-rose-500/20",
+    glowStrong: "shadow-rose-500/40",
+    text: "text-rose-400",
+    textLight: "text-rose-300",
+    ring: "ring-rose-500/50",
+    switchOn: "data-[state=checked]:bg-rose-500",
+  },
+  // Politique & Société - ORANGE/AMBER (Débat)
+  politics_society: {
+    primary: "orange",
+    border: "border-orange-500/50",
+    borderHover: "hover:border-orange-400",
+    borderFocus: "focus:border-orange-500",
+    bgCard: "bg-orange-500/5",
+    bgBadge: "bg-orange-500/15",
+    bgButton: "bg-gradient-to-r from-orange-600 to-amber-600",
+    bgButtonHover: "hover:from-orange-500 hover:to-amber-500",
+    glow: "shadow-orange-500/20",
+    glowStrong: "shadow-orange-500/40",
+    text: "text-orange-400",
+    textLight: "text-orange-300",
+    ring: "ring-orange-500/50",
+    switchOn: "data-[state=checked]:bg-orange-500",
+  },
+  // Technologie & Innovation - VIOLET/PURPLE (Futuriste)
+  tech_innovation: {
+    primary: "violet",
+    border: "border-violet-500/50",
+    borderHover: "hover:border-violet-400",
+    borderFocus: "focus:border-violet-500",
+    bgCard: "bg-violet-500/5",
+    bgBadge: "bg-violet-500/15",
+    bgButton: "bg-gradient-to-r from-violet-600 to-purple-600",
+    bgButtonHover: "hover:from-violet-500 hover:to-purple-500",
+    glow: "shadow-violet-500/20",
+    glowStrong: "shadow-violet-500/40",
+    text: "text-violet-400",
+    textLight: "text-violet-300",
+    ring: "ring-violet-500/50",
+    switchOn: "data-[state=checked]:bg-violet-500",
+  },
+  // Environnement & Climat - TEAL/VERT-BLEU (Nature)
+  environment_climate: {
+    primary: "teal",
+    border: "border-teal-500/50",
+    borderHover: "hover:border-teal-400",
+    borderFocus: "focus:border-teal-500",
+    bgCard: "bg-teal-500/5",
+    bgBadge: "bg-teal-500/15",
+    bgButton: "bg-gradient-to-r from-teal-600 to-cyan-600",
+    bgButtonHover: "hover:from-teal-500 hover:to-cyan-500",
+    glow: "shadow-teal-500/20",
+    glowStrong: "shadow-teal-500/40",
+    text: "text-teal-400",
+    textLight: "text-teal-300",
+    ring: "ring-teal-500/50",
+    switchOn: "data-[state=checked]:bg-teal-500",
+  },
+  // Santé & Sciences - BLUE/SKY (Confiance)
+  health_science: {
+    primary: "sky",
+    border: "border-sky-500/50",
+    borderHover: "hover:border-sky-400",
+    borderFocus: "focus:border-sky-500",
+    bgCard: "bg-sky-500/5",
+    bgBadge: "bg-sky-500/15",
+    bgButton: "bg-gradient-to-r from-sky-600 to-blue-600",
+    bgButtonHover: "hover:from-sky-500 hover:to-blue-500",
+    glow: "shadow-sky-500/20",
+    glowStrong: "shadow-sky-500/40",
+    text: "text-sky-400",
+    textLight: "text-sky-300",
+    ring: "ring-sky-500/50",
+    switchOn: "data-[state=checked]:bg-sky-500",
+  },
+  // Culture, Médias & Sport - FUCHSIA/PINK (Divertissement)
+  culture_media_sport: {
+    primary: "fuchsia",
+    border: "border-fuchsia-500/50",
+    borderHover: "hover:border-fuchsia-400",
+    borderFocus: "focus:border-fuchsia-500",
+    bgCard: "bg-fuchsia-500/5",
+    bgBadge: "bg-fuchsia-500/15",
+    bgButton: "bg-gradient-to-r from-fuchsia-600 to-pink-600",
+    bgButtonHover: "hover:from-fuchsia-500 hover:to-pink-500",
+    glow: "shadow-fuchsia-500/20",
+    glowStrong: "shadow-fuchsia-500/40",
+    text: "text-fuchsia-400",
+    textLight: "text-fuchsia-300",
+    ring: "ring-fuchsia-500/50",
+    switchOn: "data-[state=checked]:bg-fuchsia-500",
+  },
+  // Autre - INDIGO/SLATE (Neutre mais élégant)
+  other: {
+    primary: "indigo",
+    border: "border-indigo-500/50",
+    borderHover: "hover:border-indigo-400",
+    borderFocus: "focus:border-indigo-500",
+    bgCard: "bg-indigo-500/5",
+    bgBadge: "bg-indigo-500/15",
+    bgButton: "bg-gradient-to-r from-indigo-600 to-purple-600",
+    bgButtonHover: "hover:from-indigo-500 hover:to-purple-500",
+    glow: "shadow-indigo-500/20",
+    glowStrong: "shadow-indigo-500/40",
+    text: "text-indigo-400",
+    textLight: "text-indigo-300",
+    ring: "ring-indigo-500/50",
+    switchOn: "data-[state=checked]:bg-indigo-500",
+  },
+}
+
+// Legacy domain mapping (pour les anciens domaines)
+const LEGACY_DOMAIN_MAP: Record<string, string> = {
+  crypto: "finance",
+  forex: "finance",
+  actions: "finance",
+  indices: "finance",
+  commodities: "finance",
+  macro: "economics",
+  societe: "politics_society",
+  geopolitique: "geopolitics",
+  autre: "other",
+}
+
+// Fonction pour obtenir le thème d'un domaine
+function getProjectTheme(domain: string): ThemeColors {
+  // Vérifier si c'est un ancien domaine
+  const mappedDomain = LEGACY_DOMAIN_MAP[domain] || domain
+  return PROJECT_THEMES[mappedDomain] || PROJECT_THEMES.other
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
 const DOMAIN_OPTIONS = [
-  { value: "finance", label: "Finance & marchés" },
-  { value: "economics", label: "Économie & macro" },
-  { value: "geopolitics", label: "Géopolitique & conflits" },
-  { value: "politics_society", label: "Politique & société" },
-  { value: "tech_innovation", label: "Technologie & innovation" },
-  { value: "environment_climate", label: "Environnement & climat" },
-  { value: "health_science", label: "Santé & sciences" },
-  { value: "culture_media_sport", label: "Culture, médias & sport" },
-  { value: "other", label: "Autre" },
+  { value: "finance", label: "Finance & marchés", icon: "📈" },
+  { value: "economics", label: "Économie & macro", icon: "💹" },
+  { value: "geopolitics", label: "Géopolitique & conflits", icon: "🌍" },
+  { value: "politics_society", label: "Politique & société", icon: "🏛️" },
+  { value: "tech_innovation", label: "Technologie & innovation", icon: "🤖" },
+  { value: "environment_climate", label: "Environnement & climat", icon: "🌱" },
+  { value: "health_science", label: "Santé & sciences", icon: "🧬" },
+  { value: "culture_media_sport", label: "Culture, médias & sport", icon: "🎭" },
+  { value: "other", label: "Autre", icon: "📌" },
 ]
 
 const COMPLEXITY_OPTIONS = [
-  { value: "very_simple", label: "Ultra simple" },
-  { value: "standard", label: "Standard" },
-  { value: "advanced", label: "Avancé" },
-  { value: "expert", label: "Expert pro" },
+  { value: "very_simple", label: "Ultra simple", icon: "🌱" },
+  { value: "standard", label: "Standard", icon: "📊" },
+  { value: "advanced", label: "Avancé", icon: "🔬" },
+  { value: "expert", label: "Expert pro", icon: "🎯" },
 ]
 
 const LENGTH_OPTIONS = [
-  { value: "very_short", label: "Très court – quelques lignes maximum" },
-  { value: "short", label: "Court – 1 à 2 courts paragraphes" },
-  { value: "standard", label: "Standard – développement normal" },
-  { value: "very_detailed", label: "Très détaillé – analyse longue et poussée" },
+  { value: "very_short", label: "Très court", fullLabel: "Très court – quelques lignes maximum" },
+  { value: "short", label: "Court", fullLabel: "Court – 1 à 2 courts paragraphes" },
+  { value: "standard", label: "Standard", fullLabel: "Standard – développement normal" },
+  { value: "very_detailed", label: "Très détaillé", fullLabel: "Très détaillé – analyse longue et poussée" },
 ]
 
-function getComplexityBadgeColor(complexity: string) {
-  switch (complexity) {
-    case "very_simple":
-    case "beginner":
-      // Débutant : Vert (Emerald)
-      return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-    case "standard":
-      // Standard : Bleu (Blue)
-      return "bg-blue-500/10 text-blue-400 border-blue-500/20"
-    case "advanced":
-      // Avancé : Orange (Orange/Amber)
-      return "bg-orange-500/10 text-orange-400 border-orange-500/20"
-    case "expert":
-      // Expert : Rouge (Red/Rose)
-      return "bg-red-500/10 text-red-400 border-red-500/20"
-    default:
-      return "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
-  }
+function getComplexityBadgeStyle(complexity: string, theme: ThemeColors) {
+  // Utilise la couleur du thème pour les badges
+  return `${theme.bgBadge} ${theme.text} border ${theme.border}`
 }
 
-function getLengthBadgeColor(length: string) {
-  switch (length) {
-    case "very_short":
-      // Très court : Cyan (gris/cyan)
-      return "bg-cyan-500/10 text-cyan-400 border-cyan-500/20"
-    case "short":
-      // Court : Bleu Ciel (Sky)
-      return "bg-sky-500/10 text-sky-400 border-sky-500/20"
-    case "standard":
-      // Standard : Bleu (Indigo)
-      return "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
-    case "very_detailed":
-      // Très détaillé : Rose/Violet (Fuchsia) - Important, doit ressortir
-      return "bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20"
-    default:
-      return "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
-  }
+function getLengthBadgeStyle(theme: ThemeColors) {
+  return `${theme.bgBadge} ${theme.text} border ${theme.border} opacity-80`
 }
 
 export default function ProjectsPage() {
@@ -126,12 +303,15 @@ export default function ProjectsPage() {
     description: "",
     instructions: "",
     complexity_level: "standard",
-    length_level: "standard", // Added length_level to form state
+    length_level: "standard",
     is_active: true,
   })
 
-  const { toast } = useToast() // Declare useToast hook
+  const { toast } = useToast()
   const supabase = createClient()
+
+  // Thème actif pour la modale (basé sur le domaine sélectionné)
+  const activeTheme = getProjectTheme(formData.domain || "other")
 
   useEffect(() => {
     fetchData()
@@ -139,7 +319,6 @@ export default function ProjectsPage() {
 
   const fetchData = async () => {
     try {
-      console.log("[v0] Fetching user and projects data...")
       setError(null)
 
       const {
@@ -147,36 +326,22 @@ export default function ProjectsPage() {
         error: userError,
       } = await supabase.auth.getUser()
 
-      if (userError) {
-        console.error("[v0] Error fetching user:", userError)
-        throw userError
-      }
-
+      if (userError) throw userError
       if (!user) {
-        console.error("[v0] No user found")
         setError("Utilisateur non connecté")
         setLoading(false)
         return
       }
 
-      console.log("[v0] User found:", user.id)
-
-      // Fetch profile
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("id, plan_type")
         .eq("id", user.id)
         .single()
 
-      if (profileError) {
-        console.error("[v0] Error fetching profile:", profileError)
-        throw profileError
-      }
-
-      console.log("[v0] Profile loaded:", profileData)
+      if (profileError) throw profileError
       setProfile(profileData)
 
-      // Fetch projects
       const { data: projectsData, error: projectsError } = await supabase
         .from("custom_topics")
         .select("*")
@@ -184,15 +349,9 @@ export default function ProjectsPage() {
         .order("position", { ascending: true })
         .order("created_at", { ascending: true })
 
-      if (projectsError) {
-        console.error("[v0] Error fetching projects:", projectsError)
-        throw projectsError
-      }
-
-      console.log("[v0] Projects loaded:", projectsData?.length || 0)
+      if (projectsError) throw projectsError
       setProjects(projectsData || [])
     } catch (error) {
-      console.error("[v0] Error in fetchData:", error)
       const errorMessage = error instanceof Error ? error.message : "Impossible de charger les données"
       setError(errorMessage)
       toast({
@@ -219,7 +378,6 @@ export default function ProjectsPage() {
       return
     }
 
-    console.log("[v0] Opening new project dialog")
     setEditingProject(null)
     setFormData({
       domain: "",
@@ -227,7 +385,7 @@ export default function ProjectsPage() {
       description: "",
       instructions: "",
       complexity_level: "standard",
-      length_level: "standard", // Added length_level to default form data
+      length_level: "standard",
       is_active: true,
     })
     setFormErrors({})
@@ -235,7 +393,6 @@ export default function ProjectsPage() {
   }
 
   const openEditDialog = (project: CustomTopic) => {
-    console.log("[v0] Opening edit dialog for project:", project.id)
     setEditingProject(project)
     setFormData({
       domain: project.domain,
@@ -243,7 +400,7 @@ export default function ProjectsPage() {
       description: project.description || "",
       instructions: project.instructions,
       complexity_level: project.complexity_level || "standard",
-      length_level: (project as any).length_level || "standard", // Added length_level with fallback to 'standard'
+      length_level: (project as any).length_level || "standard",
       is_active: project.is_active,
     })
     setFormErrors({})
@@ -252,25 +409,18 @@ export default function ProjectsPage() {
 
   const validateForm = () => {
     const errors: { domain?: string; title?: string } = {}
-
     if (!formData.domain || formData.domain.trim() === "") {
       errors.domain = "Le domaine est obligatoire"
     }
-
     if (!formData.title || formData.title.trim() === "") {
       errors.title = "Le nom du projet est obligatoire"
     }
-
     setFormErrors(errors)
     return Object.keys(errors).length === 0
   }
 
   const handleSaveProject = async () => {
-    console.log("[v0] handleSaveProject called")
-    console.log("[v0] Form data:", formData)
-
     if (!validateForm()) {
-      console.log("[v0] Form validation failed")
       toast({
         title: "Champs manquants",
         description: "Veuillez remplir tous les champs obligatoires",
@@ -279,11 +429,7 @@ export default function ProjectsPage() {
       return
     }
 
-    if (saving) {
-      console.log("[v0] Already saving, ignoring duplicate submission")
-      return
-    }
-
+    if (saving) return
     setSaving(true)
 
     try {
@@ -292,20 +438,10 @@ export default function ProjectsPage() {
         error: userError,
       } = await supabase.auth.getUser()
 
-      if (userError) {
-        console.error("[v0] Error getting user:", userError)
-        throw userError
-      }
-
-      if (!user) {
-        console.error("[v0] No user found when saving")
-        throw new Error("Utilisateur non connecté")
-      }
-
-      console.log("[v0] User ID:", user.id)
+      if (userError) throw userError
+      if (!user) throw new Error("Utilisateur non connecté")
 
       if (!editingProject && !canAddProject) {
-        console.log("[v0] Project limit reached")
         toast({
           title: "Limite atteinte",
           description: `Tu as atteint la limite de ${maxProjects} projets pour ton plan ${planConfig.label}`,
@@ -319,7 +455,6 @@ export default function ProjectsPage() {
       if (!instructions) {
         const domainLabel = DOMAIN_OPTIONS.find((d) => d.value === formData.domain)?.label || formData.domain
         instructions = `Fournis un résumé clair et synthétique de l'actualité récente concernant ${formData.title} dans le domaine ${domainLabel}.`
-        console.log("[v0] Generated default instructions:", instructions)
       }
 
       const projectData = {
@@ -330,16 +465,11 @@ export default function ProjectsPage() {
         instructions,
         priority: "normal",
         complexity_level: formData.complexity_level,
-        length_level: formData.length_level, // Added length_level to project data
+        length_level: formData.length_level,
         is_active: formData.is_active,
       }
 
-      console.log("[v0] Project data to save:", projectData)
-
       if (editingProject) {
-        console.log("[v0] Updating existing project via Server Action:", editingProject.id)
-        
-        // 🔒 Utilisation de la Server Action sécurisée
         const result = await updateProject(editingProject.id, {
           title: projectData.title,
           domain: projectData.domain,
@@ -350,19 +480,13 @@ export default function ProjectsPage() {
           is_active: projectData.is_active,
         })
 
-        if (!result.success) {
-          throw new Error(result.message)
-        }
+        if (!result.success) throw new Error(result.message)
 
-        console.log("[v0] Project updated successfully via Server Action:", result.project)
         toast({
           title: "✅ Projet modifié",
           description: "Le projet a été mis à jour avec succès",
         })
       } else {
-        console.log("[v0] Creating new project via Server Action")
-        
-        // 🔒 Utilisation de la Server Action sécurisée
         const result = await createProject({
           title: projectData.title,
           domain: projectData.domain,
@@ -374,7 +498,6 @@ export default function ProjectsPage() {
         })
 
         if (!result.success) {
-          // Gestion des erreurs spécifiques
           if (result.error === "LIMIT_REACHED") {
             toast({
               title: "❌ Limite atteinte",
@@ -382,13 +505,11 @@ export default function ProjectsPage() {
               variant: "destructive",
             })
             setDialogOpen(false)
-            return // Arrêter ici, pas d'exception
+            return
           }
-          
           throw new Error(result.message)
         }
 
-        console.log("[v0] Project created successfully via Server Action:", result.project)
         toast({
           title: "✅ Projet créé",
           description: "Le nouveau projet a été ajouté avec succès",
@@ -396,11 +517,8 @@ export default function ProjectsPage() {
       }
 
       setDialogOpen(false)
-      console.log("[v0] Refreshing projects list...")
       await fetchData()
-      console.log("[v0] Projects list refreshed")
     } catch (error) {
-      console.error("[v0] Error saving project:", error)
       const errorMessage = error instanceof Error ? error.message : "Impossible de sauvegarder le projet"
       toast({
         title: "Erreur",
@@ -413,23 +531,16 @@ export default function ProjectsPage() {
   }
 
   const toggleProjectActive = async (projectId: string, isActive: boolean) => {
-    console.log("[v0] Toggling project active:", projectId, isActive)
     try {
       const { error } = await supabase.from("custom_topics").update({ is_active: isActive }).eq("id", projectId)
+      if (error) throw error
 
-      if (error) {
-        console.error("[v0] Error toggling project:", error)
-        throw error
-      }
-
-      console.log("[v0] Project toggled successfully")
       setProjects(projects.map((p) => (p.id === projectId ? { ...p, is_active: isActive } : p)))
       toast({
         title: isActive ? "Projet activé" : "Projet désactivé",
         description: `Le projet a été ${isActive ? "activé" : "désactivé"}`,
       })
     } catch (error) {
-      console.error("[v0] Error in toggleProjectActive:", error)
       const errorMessage = error instanceof Error ? error.message : "Impossible de modifier le projet"
       toast({
         title: "Erreur",
@@ -442,8 +553,6 @@ export default function ProjectsPage() {
   const moveProject = async (index: number, direction: "up" | "down") => {
     const targetIndex = direction === "up" ? index - 1 : index + 1
     if (targetIndex < 0 || targetIndex >= projects.length) return
-
-    console.log("[v0] Moving project:", index, direction)
 
     try {
       const currentProject = projects[index]
@@ -459,15 +568,9 @@ export default function ProjectsPage() {
         .update({ position: currentProject.position })
         .eq("id", targetProject.id)
 
-      if (error1 || error2) {
-        console.error("[v0] Error moving project:", error1 || error2)
-        throw error1 || error2
-      }
-
-      console.log("[v0] Project moved successfully")
+      if (error1 || error2) throw error1 || error2
       await fetchData()
     } catch (error) {
-      console.error("[v0] Error in moveProject:", error)
       const errorMessage = error instanceof Error ? error.message : "Impossible de déplacer le projet"
       toast({
         title: "Erreur",
@@ -479,23 +582,16 @@ export default function ProjectsPage() {
 
   const getDomainLabel = (domain: string) => {
     const oldFinanceDomains = ["crypto", "forex", "actions", "indices", "commodities", "macro"]
-    if (oldFinanceDomains.includes(domain)) {
-      return "Finance & marchés"
-    }
-
-    if (domain === "societe") {
-      return "Politique & société"
-    }
-
-    if (domain === "geopolitique") {
-      return "Géopolitique & conflits"
-    }
-
-    if (domain === "autre") {
-      return "Autre"
-    }
-
+    if (oldFinanceDomains.includes(domain)) return "Finance & marchés"
+    if (domain === "societe") return "Politique & société"
+    if (domain === "geopolitique") return "Géopolitique & conflits"
+    if (domain === "autre") return "Autre"
     return DOMAIN_OPTIONS.find((d) => d.value === domain)?.label || "Autre"
+  }
+
+  const getDomainIcon = (domain: string) => {
+    const mappedDomain = LEGACY_DOMAIN_MAP[domain] || domain
+    return DOMAIN_OPTIONS.find((d) => d.value === mappedDomain)?.icon || "📌"
   }
 
   const getComplexityLabel = (complexity: string) => {
@@ -503,33 +599,37 @@ export default function ProjectsPage() {
   }
 
   const getLengthLabel = (length: string) => {
-    return LENGTH_OPTIONS.find((l) => l.value === length)?.label || "Standard – développement normal"
+    return LENGTH_OPTIONS.find((l) => l.value === length)?.label || "Standard"
   }
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <p className="text-muted-foreground">Chargement...</p>
+      <div className="flex h-full items-center justify-center bg-zinc-950">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500" />
+          <p className="text-zinc-400">Chargement des projets...</p>
+        </div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <Card className="max-w-md">
+      <div className="flex h-full items-center justify-center bg-zinc-950">
+        <Card className="max-w-md bg-zinc-900 border-red-500/30">
           <CardContent className="pt-6">
-            <div className="flex items-center gap-3 text-destructive mb-4">
+            <div className="flex items-center gap-3 text-red-400 mb-4">
               <AlertCircle className="h-5 w-5" />
               <p className="font-semibold">Erreur de chargement</p>
             </div>
-            <p className="text-sm text-muted-foreground mb-4">{error}</p>
+            <p className="text-sm text-zinc-400 mb-4">{error}</p>
             <Button
               onClick={() => {
                 setError(null)
                 setLoading(true)
                 fetchData()
               }}
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500"
             >
               Réessayer
             </Button>
@@ -540,46 +640,90 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-background p-8">
-      {/* Project Form Dialog */}
+    <div className="min-h-screen bg-zinc-950 text-white p-8">
+      {/* ═══════════════════════════════════════════════════════════════════════════
+          TÂCHE 3 : MODALE D'ÉDITION AVEC THÈME DYNAMIQUE
+          ═══════════════════════════════════════════════════════════════════════════ */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogContent 
+          className={`
+            sm:max-w-[600px] max-h-[90vh] overflow-y-auto
+            bg-zinc-900/95 backdrop-blur-xl
+            border-2 ${activeTheme.border}
+            shadow-2xl ${activeTheme.glow}
+          `}
+        >
+          {/* Glow effect sur la modale */}
+          <div className={`absolute -inset-[1px] ${activeTheme.bgCard} rounded-lg blur-xl -z-10 opacity-50`} />
+          
           <DialogHeader>
-            <DialogTitle>{editingProject ? "Modifier le projet" : "Nouveau projet"}</DialogTitle>
-            <DialogDescription>Configure un projet ultra personnalisé pour ton journal d'actualité.</DialogDescription>
+            <DialogTitle className={`text-2xl font-bold flex items-center gap-3 ${activeTheme.text}`}>
+              {editingProject ? (
+                <>
+                  <Edit className="h-6 w-6" />
+                  Modifier le projet
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-6 w-6" />
+                  Nouveau projet
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              Configure un projet ultra personnalisé pour ton journal d'actualité.
+            </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-5 py-4">
+            {/* Domaine */}
             <div className="space-y-2">
-              <Label htmlFor="domain">
-                Domaine <span className="text-destructive">*</span>
+              <Label htmlFor="domain" className="text-white">
+                Domaine <span className="text-red-400">*</span>
               </Label>
               <Select
                 value={formData.domain}
                 onValueChange={(value) => {
                   setFormData({ ...formData, domain: value })
-                  if (formErrors.domain) {
-                    setFormErrors({ ...formErrors, domain: undefined })
-                  }
+                  if (formErrors.domain) setFormErrors({ ...formErrors, domain: undefined })
                 }}
               >
-                <SelectTrigger id="domain" className={formErrors.domain ? "border-destructive" : ""}>
+                <SelectTrigger 
+                  id="domain" 
+                  className={`
+                    bg-zinc-800/50 border-zinc-700 text-white
+                    ${formErrors.domain ? "border-red-500" : ""}
+                    focus:${activeTheme.borderFocus} focus:ring-2 focus:${activeTheme.ring}
+                    transition-all duration-300
+                  `}
+                >
                   <SelectValue placeholder="Sélectionne un domaine" />
                 </SelectTrigger>
-                <SelectContent>
-                  {DOMAIN_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
+                <SelectContent className="bg-zinc-900 border-zinc-700">
+                  {DOMAIN_OPTIONS.map((option) => {
+                    const optionTheme = getProjectTheme(option.value)
+                    return (
+                      <SelectItem 
+                        key={option.value} 
+                        value={option.value}
+                        className={`text-white hover:${optionTheme.bgBadge} focus:${optionTheme.bgBadge}`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>{option.icon}</span>
+                          <span>{option.label}</span>
+                        </span>
+                      </SelectItem>
+                    )
+                  })}
                 </SelectContent>
               </Select>
-              {formErrors.domain && <p className="text-xs text-destructive">{formErrors.domain}</p>}
+              {formErrors.domain && <p className="text-xs text-red-400">{formErrors.domain}</p>}
             </div>
 
+            {/* Nom du projet */}
             <div className="space-y-2">
-              <Label htmlFor="title">
-                Nom du projet <span className="text-destructive">*</span>
+              <Label htmlFor="title" className="text-white">
+                Nom du projet <span className="text-red-400">*</span>
               </Label>
               <Input
                 id="title"
@@ -587,220 +731,370 @@ export default function ProjectsPage() {
                 value={formData.title}
                 onChange={(e) => {
                   setFormData({ ...formData, title: e.target.value })
-                  if (formErrors.title) {
-                    setFormErrors({ ...formErrors, title: undefined })
-                  }
+                  if (formErrors.title) setFormErrors({ ...formErrors, title: undefined })
                 }}
-                className={formErrors.title ? "border-destructive" : ""}
+                className={`
+                  bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500
+                  ${formErrors.title ? "border-red-500" : ""}
+                  focus:${activeTheme.borderFocus} focus:ring-2 focus:${activeTheme.ring}
+                  transition-all duration-300
+                `}
               />
-              {formErrors.title && <p className="text-xs text-destructive">{formErrors.title}</p>}
+              {formErrors.title && <p className="text-xs text-red-400">{formErrors.title}</p>}
             </div>
 
+            {/* Description */}
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description" className="text-zinc-300">Description</Label>
               <Textarea
                 id="description"
                 placeholder="Contexte ou précisions supplémentaires sur ce projet..."
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={3}
+                rows={2}
+                className={`
+                  bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500
+                  focus:${activeTheme.borderFocus} focus:ring-2 focus:${activeTheme.ring}
+                  transition-all duration-300
+                `}
               />
             </div>
 
+            {/* Niveau de difficulté */}
             <div className="space-y-2">
-              <Label htmlFor="complexity">Niveau de difficulté *</Label>
+              <Label htmlFor="complexity" className="text-zinc-300">Niveau de difficulté</Label>
               <Select
                 value={formData.complexity_level}
                 onValueChange={(value) => setFormData({ ...formData, complexity_level: value })}
               >
-                <SelectTrigger id="complexity">
+                <SelectTrigger 
+                  id="complexity"
+                  className={`
+                    bg-zinc-800/50 border-zinc-700 text-white
+                    focus:${activeTheme.borderFocus} focus:ring-2 focus:${activeTheme.ring}
+                  `}
+                >
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-zinc-900 border-zinc-700">
                   {COMPLEXITY_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
+                    <SelectItem key={option.value} value={option.value} className="text-white">
+                      <span className="flex items-center gap-2">
+                        <span>{option.icon}</span>
+                        <span>{option.label}</span>
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
+            {/* Niveau de longueur */}
             <div className="space-y-2">
-              <Label htmlFor="length">Niveau de longueur *</Label>
+              <Label htmlFor="length" className="text-zinc-300">Niveau de longueur</Label>
               <Select
                 value={formData.length_level}
                 onValueChange={(value) => setFormData({ ...formData, length_level: value })}
               >
-                <SelectTrigger id="length">
+                <SelectTrigger 
+                  id="length"
+                  className={`
+                    bg-zinc-800/50 border-zinc-700 text-white
+                    focus:${activeTheme.borderFocus} focus:ring-2 focus:${activeTheme.ring}
+                  `}
+                >
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-zinc-900 border-zinc-700">
                   {LENGTH_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
+                    <SelectItem key={option.value} value={option.value} className="text-white">
+                      {option.fullLabel}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-zinc-500">
                 Définit la longueur du traitement de ce sujet dans le Flow.
               </p>
             </div>
 
+            {/* Instructions */}
             <div className="space-y-2">
-              <Label htmlFor="instructions">Instructions</Label>
+              <Label htmlFor="instructions" className="text-zinc-300">Instructions personnalisées</Label>
               <Textarea
                 id="instructions"
                 placeholder="Ex : Explique de manière pédagogique, focus sur les impacts sur les marchés, pas de blabla inutile."
                 value={formData.instructions}
                 onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
                 rows={3}
+                className={`
+                  bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500
+                  focus:${activeTheme.borderFocus} focus:ring-2 focus:${activeTheme.ring}
+                  transition-all duration-300
+                `}
               />
-              <p className="text-xs text-muted-foreground">Si vide, une instruction par défaut sera générée</p>
+              <p className="text-xs text-zinc-500">Si vide, une instruction par défaut sera générée</p>
             </div>
 
-            <div className="flex items-center justify-between">
-              <Label htmlFor="is_active">Projet actif</Label>
+            {/* Switch Actif avec couleur thématique */}
+            <div className={`
+              flex items-center justify-between p-4 rounded-xl
+              ${activeTheme.bgCard} border ${activeTheme.border}
+            `}>
+              <div>
+                <Label htmlFor="is_active" className="text-white font-medium">Projet actif</Label>
+                <p className="text-xs text-zinc-400 mt-1">
+                  Les projets actifs apparaissent dans ton Flow quotidien
+                </p>
+              </div>
               <Switch
                 id="is_active"
                 checked={formData.is_active}
                 onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                className={activeTheme.switchOn}
               />
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
+          <DialogFooter className="gap-3">
+            <Button 
+              variant="outline" 
+              onClick={() => setDialogOpen(false)} 
+              disabled={saving}
+              className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+            >
               Annuler
             </Button>
-            <Button onClick={handleSaveProject} disabled={saving || !formData.domain || !formData.title}>
-              {saving ? "Enregistrement..." : editingProject ? "Modifier le projet" : "Créer le projet"}
+            <Button 
+              onClick={handleSaveProject} 
+              disabled={saving || !formData.domain || !formData.title}
+              className={`
+                ${activeTheme.bgButton} ${activeTheme.bgButtonHover}
+                text-white font-semibold
+                shadow-lg ${activeTheme.glow}
+                transition-all duration-300
+                disabled:opacity-50
+              `}
+            >
+              {saving ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                  Enregistrement...
+                </>
+              ) : editingProject ? (
+                "Modifier le projet"
+              ) : (
+                "Créer le projet"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Main Content */}
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white">Gestion de projets</h1>
-          <p className="text-zinc-400 mt-2">
-            Configure tes projets personnalisés pour structurer ton Flow. Plan {planConfig.label} : {projects.length}/
-            {maxProjects} projets.
-            {planConfig.price && <span className="ml-2 text-sm">({planConfig.price})</span>}
+      {/* ═══════════════════════════════════════════════════════════════════════════
+          CONTENU PRINCIPAL
+          ═══════════════════════════════════════════════════════════════════════════ */}
+      <div className="mx-auto max-w-7xl">
+        {/* Header */}
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-10"
+        >
+          <h1 className="text-4xl font-bold mb-3 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+            Gestion de projets
+          </h1>
+          <p className="text-zinc-400">
+            Configure tes projets personnalisés pour structurer ton Flow. 
+            <span className="ml-2 px-3 py-1 rounded-full bg-zinc-800 text-sm">
+              Plan {planConfig.label} : <span className="text-white font-semibold">{projects.length}/{maxProjects}</span> projets
+            </span>
           </p>
-        </div>
+        </motion.div>
 
-        <div className="flex justify-end mb-6">
-          <Button onClick={openNewProjectDialog} disabled={!canAddProject}>
-            <Plus className="mr-2 h-4 w-4" />
+        {/* Bouton Nouveau projet */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="flex justify-end mb-8"
+        >
+          <Button 
+            onClick={openNewProjectDialog} 
+            disabled={!canAddProject}
+            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold px-6 py-3 rounded-xl shadow-lg shadow-indigo-500/25 transition-all hover:shadow-indigo-500/40"
+          >
+            <Plus className="mr-2 h-5 w-5" />
             Nouveau projet
           </Button>
-        </div>
+        </motion.div>
 
+        {/* Liste des projets */}
         {projects.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <p className="text-muted-foreground mb-4">Aucun projet pour le moment</p>
-              <Button onClick={openNewProjectDialog} disabled={!canAddProject}>
-                <Plus className="mr-2 h-4 w-4" />
-                Créer ton premier projet
-              </Button>
-            </CardContent>
-          </Card>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <Card className="bg-zinc-900/50 border-zinc-800 border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <div className="p-4 rounded-full bg-indigo-500/10 mb-4">
+                  <Sparkles className="h-8 w-8 text-indigo-400" />
+                </div>
+                <p className="text-zinc-400 mb-6 text-lg">Aucun projet pour le moment</p>
+                <Button 
+                  onClick={openNewProjectDialog} 
+                  disabled={!canAddProject}
+                  className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Créer ton premier projet
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {projects.map((project, index) => (
-              <Card
-                key={project.id}
-                className={`
-                  relative
-                  bg-black/20
-                  border border-white/10
-                  hover:border-white/30
-                  hover:bg-black/30
-                  transition-all
-                  ${project.is_active ? "" : "opacity-60"}
-                `}
-              >
-                {/* Badge Actif en haut à droite - petite touche de couleur */}
-                {project.is_active && (
-                  <div className="absolute top-3 right-3 z-10">
-                    <Badge className="bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-300 border-indigo-500/30 text-xs">
-                      Actif
-                    </Badge>
-                  </div>
-                )}
-                
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 pr-8">
-                      <CardTitle className="text-lg mb-2">{project.title}</CardTitle>
-                      <CardDescription className="text-zinc-400">{getDomainLabel(project.domain)}</CardDescription>
-                      <div className="flex flex-wrap gap-2 mt-3">
-                        <Badge variant="outline" className={getComplexityBadgeColor(project.complexity_level)}>
-                          Difficulté : {getComplexityLabel(project.complexity_level)}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {projects.map((project, index) => {
+              const theme = getProjectTheme(project.domain)
+              
+              return (
+                <motion.div
+                  key={project.id}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                >
+                  {/* ═══════════════════════════════════════════════════════════
+                      TÂCHE 2 : CARTES AVEC COULEURS THÉMATIQUES
+                      ═══════════════════════════════════════════════════════════ */}
+                  <Card
+                    className={`
+                      relative overflow-hidden
+                      bg-zinc-900/60 backdrop-blur-sm
+                      border-2 ${theme.border}
+                      ${theme.borderHover}
+                      shadow-lg ${theme.glow}
+                      hover:shadow-xl hover:${theme.glowStrong}
+                      transition-all duration-300
+                      ${project.is_active ? "" : "opacity-50 grayscale-[30%]"}
+                      group
+                    `}
+                  >
+                    {/* Glow background subtil */}
+                    <div className={`absolute inset-0 ${theme.bgCard} opacity-30`} />
+                    
+                    {/* Badge Actif */}
+                    {project.is_active && (
+                      <div className="absolute top-3 right-3 z-10">
+                        <Badge className={`${theme.bgBadge} ${theme.text} border ${theme.border} font-semibold`}>
+                          ✨ Actif
                         </Badge>
-                        <Badge
-                          variant="outline"
-                          className={getLengthBadgeColor((project as any).length_level || "standard")}
+                      </div>
+                    )}
+                    
+                    <CardHeader className="relative pb-3">
+                      <div className="flex items-start gap-3">
+                        {/* Icône du domaine */}
+                        <div className={`
+                          p-3 rounded-xl ${theme.bgBadge} border ${theme.border}
+                          text-2xl flex items-center justify-center
+                          group-hover:scale-110 transition-transform
+                        `}>
+                          {getDomainIcon(project.domain)}
+                        </div>
+                        
+                        <div className="flex-1 min-w-0 pr-16">
+                          <CardTitle className="text-lg text-white truncate mb-1">
+                            {project.title}
+                          </CardTitle>
+                          <CardDescription className={`${theme.text} font-medium`}>
+                            {getDomainLabel(project.domain)}
+                          </CardDescription>
+                        </div>
+                      </div>
+                      
+                      {/* Badges de complexité et longueur */}
+                      <div className="flex flex-wrap gap-2 mt-4">
+                        <Badge 
+                          variant="outline" 
+                          className={getComplexityBadgeStyle(project.complexity_level, theme)}
                         >
-                          Longueur : {getLengthLabel((project as any).length_level || "standard").split(" – ")[0]}
+                          {getComplexityLabel(project.complexity_level)}
+                        </Badge>
+                        <Badge 
+                          variant="outline" 
+                          className={getLengthBadgeStyle(theme)}
+                        >
+                          {getLengthLabel((project as any).length_level || "standard")}
                         </Badge>
                       </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                {(project.description || project.instructions) && (
-                  <CardContent className="space-y-2">
-                    {project.description && (
-                      <div>
-                        <p className="text-sm font-medium mb-1 text-white">Description</p>
-                        <p className="text-sm text-zinc-400">{project.description}</p>
-                      </div>
+                    </CardHeader>
+                    
+                    {/* Description et Instructions */}
+                    {(project.description || project.instructions) && (
+                      <CardContent className="relative space-y-3 pt-0">
+                        {project.description && (
+                          <div>
+                            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">Description</p>
+                            <p className="text-sm text-zinc-300 line-clamp-2">{project.description}</p>
+                          </div>
+                        )}
+                        {project.instructions && (
+                          <div>
+                            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">Instructions</p>
+                            <p className="text-sm text-zinc-400 line-clamp-2 italic">{project.instructions}</p>
+                          </div>
+                        )}
+                      </CardContent>
                     )}
-                    {project.instructions && (
-                      <div>
-                        <p className="text-sm font-medium mb-1 text-white">Instructions</p>
-                        <p className="text-sm text-zinc-400">{project.instructions}</p>
+                    
+                    {/* Actions */}
+                    <CardContent className={`
+                      relative pt-4 flex items-center justify-between 
+                      border-t ${theme.border}
+                    `}>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => moveProject(index, "up")}
+                          disabled={index === 0}
+                          title="Monter"
+                          className={`h-8 w-8 ${theme.text} hover:${theme.bgBadge}`}
+                        >
+                          <ChevronUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => moveProject(index, "down")}
+                          disabled={index === projects.length - 1}
+                          title="Descendre"
+                          className={`h-8 w-8 ${theme.text} hover:${theme.bgBadge}`}
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => openEditDialog(project)} 
+                          className={`h-8 w-8 ${theme.text} hover:${theme.bgBadge}`}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
                       </div>
-                    )}
-                  </CardContent>
-                )}
-                <CardContent className="pt-4 flex items-center justify-between border-t border-white/5">
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => moveProject(index, "up")}
-                      disabled={index === 0}
-                      title="Monter"
-                      className="h-8 w-8"
-                    >
-                      <ChevronUp className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => moveProject(index, "down")}
-                      disabled={index === projects.length - 1}
-                      title="Descendre"
-                      className="h-8 w-8"
-                    >
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => openEditDialog(project)} className="h-8 w-8">
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <Switch
-                    checked={project.is_active}
-                    onCheckedChange={(checked) => toggleProjectActive(project.id, checked)}
-                  />
-                </CardContent>
-              </Card>
-            ))}
+                      
+                      {/* Switch avec couleur thématique */}
+                      <Switch
+                        checked={project.is_active}
+                        onCheckedChange={(checked) => toggleProjectActive(project.id, checked)}
+                        className={theme.switchOn}
+                      />
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )
+            })}
           </div>
         )}
       </div>
