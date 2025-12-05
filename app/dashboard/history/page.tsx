@@ -308,106 +308,160 @@ export default function HistoryPage() {
         </motion.div>
       )}
 
+      {/* ═══════════════════════════════════════════════════════════════════════════
+          MODALE DE LECTURE - OPTIMISÉE POUR LE CONFORT
+          ═══════════════════════════════════════════════════════════════════════════ */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-zinc-900 border-white/10">
+        <DialogContent 
+          className="
+            w-[95vw] max-w-5xl 
+            max-h-[85vh] 
+            overflow-hidden
+            bg-zinc-900/95 backdrop-blur-xl 
+            border border-white/10
+            shadow-2xl shadow-black/50
+            p-0
+          "
+        >
           {selectedRecap && (
-            <>
-              <DialogHeader>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    {/* Date en grand */}
-                    <time className="text-sm font-mono text-indigo-400 mb-2 block">
-                      {new Date(selectedRecap.created_at).toLocaleDateString("fr-FR", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </time>
-                    <DialogTitle className="text-3xl text-white font-bold mb-2">
-                      {selectedRecap.summary || "Recap"}
-                    </DialogTitle>
-                    <DialogDescription className="flex items-center gap-2 flex-wrap">
-                      {selectedRecap.email_sent && (
-                        <div className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-full">
-                          <Mail className="h-3 w-3" />
-                          Envoyé par email
+            <div className="flex flex-col h-full max-h-[85vh]">
+              {/* Header fixe */}
+              <div className="flex-shrink-0 p-6 md:p-8 border-b border-white/10 bg-zinc-900/80 backdrop-blur-sm">
+                <DialogHeader>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      {/* Badge de date stylisé */}
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
+                          <Calendar className="h-4 w-4 text-indigo-400" />
+                          <time className="text-sm font-mono text-indigo-300">
+                            {new Date(selectedRecap.created_at).toLocaleDateString("fr-FR", {
+                              day: "numeric",
+                              month: "long",
+                              year: "numeric",
+                            })}
+                          </time>
+                          <span className="text-xs text-indigo-400/60">
+                            {new Date(selectedRecap.created_at).toLocaleTimeString("fr-FR", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
                         </div>
+                        {selectedRecap.email_sent && (
+                          <div className="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg">
+                            <Mail className="h-3.5 w-3.5" />
+                            Envoyé
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Titre principal */}
+                      <DialogTitle className="text-2xl md:text-3xl lg:text-4xl text-white font-bold leading-tight pr-4">
+                        {selectedRecap.summary || "Flow"}
+                      </DialogTitle>
+                      
+                      {/* Topics couverts en badges */}
+                      {selectedRecap.topics_covered && (
+                        <DialogDescription className="mt-3 flex items-center gap-2 flex-wrap">
+                          {selectedRecap.topics_covered.split(",").slice(0, 4).map((topic, i) => (
+                            <span 
+                              key={i}
+                              className="text-xs px-2 py-1 rounded-full bg-zinc-800 text-zinc-400 border border-white/5"
+                            >
+                              {topic.trim()}
+                            </span>
+                          ))}
+                        </DialogDescription>
                       )}
-                    </DialogDescription>
+                    </div>
+                    
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <EmailButton
+                        flowId={selectedRecap.id}
+                        variant="outline"
+                        size="sm"
+                        className="border-white/10 hover:border-indigo-500/50 hover:bg-indigo-500/10"
+                      />
+                      <PDFButton
+                        flowData={{
+                          id: selectedRecap.id,
+                          summary: selectedRecap.summary,
+                          created_at: selectedRecap.created_at,
+                          body: selectedRecap.body,
+                          source_json: selectedRecap.source_json,
+                          key_events: selectedRecap.key_events,
+                          topics_covered: selectedRecap.topics_covered,
+                        }}
+                        variant="outline"
+                        className="border-white/10 hover:border-indigo-500/50 hover:bg-indigo-500/10"
+                      />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <EmailButton
-                      flowId={selectedRecap.id}
-                      variant="outline"
-                      size="sm"
-                      className="border-white/10 hover:border-indigo-500/50"
-                    />
-                    <PDFButton
-                      flowData={{
-                        id: selectedRecap.id,
-                        summary: selectedRecap.summary,
-                        created_at: selectedRecap.created_at,
-                        body: selectedRecap.body,
-                        source_json: selectedRecap.source_json,
-                        key_events: selectedRecap.key_events,
-                        topics_covered: selectedRecap.topics_covered,
-                      }}
-                      variant="outline"
-                      className="border-white/10 hover:border-indigo-500/50"
-                    />
+                </DialogHeader>
+              </div>
+
+              {/* Contenu scrollable */}
+              <div className="flex-1 overflow-y-auto overscroll-contain">
+                <div className="p-6 md:p-8 lg:p-10 space-y-8">
+                  {/* Corps du Flow */}
+                  {selectedRecap.body && (
+                    <div className="max-w-4xl mx-auto">
+                      {renderFlowBody(selectedRecap)}
+                    </div>
+                  )}
+
+                  {/* Événements clés */}
+                  {selectedRecap.key_events && (
+                    <div className="max-w-4xl mx-auto pt-6 border-t border-white/5">
+                      <h3 className="font-bold text-xl text-white mb-4 flex items-center gap-2">
+                        <span className="text-indigo-400">📌</span>
+                        Événements clés
+                      </h3>
+                      <div className="text-zinc-200 text-base leading-relaxed whitespace-pre-wrap">
+                        {selectedRecap.key_events}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Canaux */}
+                  {selectedRecap.channels && selectedRecap.channels.length > 0 && (
+                    <div className="max-w-4xl mx-auto pt-6 border-t border-white/5">
+                      <h3 className="font-semibold text-sm text-zinc-400 mb-3 uppercase tracking-wider">
+                        Canaux de diffusion
+                      </h3>
+                      <div className="flex gap-2 flex-wrap">
+                        {selectedRecap.channels.map((channel: string, index: number) => (
+                          <Badge 
+                            key={index} 
+                            variant="secondary"
+                            className="bg-zinc-800 text-zinc-300 border border-white/10"
+                          >
+                            {channel}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Footer avec métadonnées */}
+                  <div className="max-w-4xl mx-auto pt-8 border-t border-white/5">
+                    <div className="flex items-center justify-between text-xs text-zinc-500">
+                      <span>
+                        Flow ID: <code className="text-zinc-600">{selectedRecap.id.slice(0, 8)}...</code>
+                      </span>
+                      {selectedRecap.email_sent_at && (
+                        <span className="flex items-center gap-1">
+                          <Mail className="h-3 w-3" />
+                          Envoyé le {new Date(selectedRecap.email_sent_at).toLocaleDateString("fr-FR")}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </DialogHeader>
-              <div className="space-y-6 mt-4 max-w-3xl mx-auto">
-                {selectedRecap.body && (
-                  <div>
-                    {renderFlowBody(selectedRecap)}
-                  </div>
-                )}
-                {selectedRecap.key_events && (
-                  <div>
-                    <h3 className="font-semibold mb-4 text-xl text-white">Événements clés</h3>
-                    <div className="text-zinc-100 text-base md:text-lg leading-relaxed whitespace-pre-wrap font-normal">
-                      {selectedRecap.key_events}
-                    </div>
-                  </div>
-                )}
-                {selectedRecap.topics_covered && (
-                  <div>
-                    <h3 className="font-semibold mb-4 text-xl text-white">Sujets couverts</h3>
-                    <p className="text-zinc-100 text-base md:text-lg leading-relaxed font-normal">
-                      {selectedRecap.topics_covered}
-                    </p>
-                  </div>
-                )}
-                {selectedRecap.channels && selectedRecap.channels.length > 0 && (
-                  <div>
-                    <h3 className="font-semibold mb-2 text-white">Canaux</h3>
-                    <div className="flex gap-2 flex-wrap">
-                      {selectedRecap.channels.map((channel: string, index: number) => (
-                        <Badge key={index} variant="secondary">
-                          {channel}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {selectedRecap.email_sent_at && (
-                  <div className="text-xs text-zinc-500">
-                    Email envoyé le{" "}
-                    {new Date(selectedRecap.email_sent_at).toLocaleDateString("fr-FR", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </div>
-                )}
               </div>
-            </>
+            </div>
           )}
         </DialogContent>
       </Dialog>

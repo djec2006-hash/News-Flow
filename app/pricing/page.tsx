@@ -73,7 +73,7 @@ const plans = [
   {
     name: "Pro",
     tagline: "Power User",
-    price: "29,90",
+    price: "16,90",
     period: "par mois",
     description: "Pour les utilisateurs exigeants",
     features: [

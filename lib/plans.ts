@@ -57,8 +57,8 @@ const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
   pro: {
     id: "pro",
     label: "Pro",
-    pricePerMonth: "29,90 €/mois",
-    priceAmount: 29.90,
+    pricePerMonth: "16,90 €/mois",
+    priceAmount: 16.90,
     maxProjects: 15,
     maxRecapsPerWeek: 15,
     description: "Pour les power users exigeants",

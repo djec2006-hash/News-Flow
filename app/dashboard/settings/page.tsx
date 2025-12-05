@@ -371,7 +371,7 @@ export default function SettingsPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <CreditCard className="h-4 w-4" />
-                      <span>{planConfig.price}</span>
+                      <span>{planConfig.pricePerMonth}</span>
                     </div>
                   </div>
                 )}
