@@ -642,43 +642,33 @@ export default function ProjectsPage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-white p-8">
       {/* ═══════════════════════════════════════════════════════════════════════════
-          TÂCHE 3 : MODALE D'ÉDITION AVEC THÈME DYNAMIQUE
+          MODALE D'ÉDITION - DESIGN PROFESSIONNEL & LISIBLE
           ═══════════════════════════════════════════════════════════════════════════ */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent 
-          className={`
+          className="
             sm:max-w-[600px] max-h-[90vh] overflow-y-auto
             bg-zinc-900/95 backdrop-blur-xl
-            border-2 ${activeTheme.border}
-            shadow-2xl ${activeTheme.glow}
-          `}
+            border border-white/10
+            shadow-2xl
+            p-0
+          "
         >
-          {/* Glow effect sur la modale */}
-          <div className={`absolute -inset-[1px] ${activeTheme.bgCard} rounded-lg blur-xl -z-10 opacity-50`} />
-          
-          <DialogHeader>
-            <DialogTitle className={`text-2xl font-bold flex items-center gap-3 ${activeTheme.text}`}>
-              {editingProject ? (
-                <>
-                  <Edit className="h-6 w-6" />
-                  Modifier le projet
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-6 w-6" />
-                  Nouveau projet
-                </>
-              )}
+          {/* Header */}
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-white/10">
+            <DialogTitle className="text-2xl font-bold text-white">
+              {editingProject ? "Modifier le projet" : "Nouveau projet"}
             </DialogTitle>
-            <DialogDescription className="text-zinc-400">
-              Configure un projet ultra personnalisé pour ton journal d'actualité.
+            <DialogDescription className="text-zinc-400 mt-1">
+              Configurez un projet personnalisé pour structurer votre Flow d'actualité
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-5 py-4">
+          {/* Contenu du formulaire */}
+          <div className="px-6 py-6 space-y-6">
             {/* Domaine */}
             <div className="space-y-2">
-              <Label htmlFor="domain" className="text-white">
+              <Label htmlFor="domain" className="text-zinc-400 font-medium mb-2 block">
                 Domaine <span className="text-red-400">*</span>
               </Label>
               <Select
@@ -691,38 +681,35 @@ export default function ProjectsPage() {
                 <SelectTrigger 
                   id="domain" 
                   className={`
-                    bg-zinc-800/50 border-zinc-700 text-white
+                    h-11 bg-zinc-900/50 border border-white/10 text-white
+                    hover:border-white/20
                     ${formErrors.domain ? "border-red-500" : ""}
-                    focus:${activeTheme.borderFocus} focus:ring-2 focus:${activeTheme.ring}
-                    transition-all duration-300
+                    focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20
+                    transition-all duration-200
                   `}
                 >
-                  <SelectValue placeholder="Sélectionne un domaine" />
+                  <SelectValue placeholder="Sélectionnez un domaine" />
                 </SelectTrigger>
-                <SelectContent className="bg-zinc-900 border-zinc-700">
-                  {DOMAIN_OPTIONS.map((option) => {
-                    const optionTheme = getProjectTheme(option.value)
-                    return (
-                      <SelectItem 
-                        key={option.value} 
-                        value={option.value}
-                        className={`text-white hover:${optionTheme.bgBadge} focus:${optionTheme.bgBadge}`}
-                      >
-                        <span className="flex items-center gap-2">
-                          <span>{option.icon}</span>
-                          <span>{option.label}</span>
-                        </span>
-                      </SelectItem>
-                    )
-                  })}
+                <SelectContent className="bg-zinc-900 border border-white/10">
+                  {DOMAIN_OPTIONS.map((option) => (
+                    <SelectItem 
+                      key={option.value} 
+                      value={option.value}
+                      className="text-white hover:bg-indigo-500/20 focus:bg-indigo-500/20"
+                    >
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-              {formErrors.domain && <p className="text-xs text-red-400">{formErrors.domain}</p>}
+              {formErrors.domain && (
+                <p className="text-xs text-red-400 mt-1">{formErrors.domain}</p>
+              )}
             </div>
 
             {/* Nom du projet */}
             <div className="space-y-2">
-              <Label htmlFor="title" className="text-white">
+              <Label htmlFor="title" className="text-zinc-400 font-medium mb-2 block">
                 Nom du projet <span className="text-red-400">*</span>
               </Label>
               <Input
@@ -734,55 +721,67 @@ export default function ProjectsPage() {
                   if (formErrors.title) setFormErrors({ ...formErrors, title: undefined })
                 }}
                 className={`
-                  bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500
+                  h-11 bg-zinc-900/50 border border-white/10 text-white placeholder:text-zinc-500
+                  hover:border-white/20
                   ${formErrors.title ? "border-red-500" : ""}
-                  focus:${activeTheme.borderFocus} focus:ring-2 focus:${activeTheme.ring}
-                  transition-all duration-300
+                  focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20
+                  transition-all duration-200
                 `}
               />
-              {formErrors.title && <p className="text-xs text-red-400">{formErrors.title}</p>}
+              {formErrors.title && (
+                <p className="text-xs text-red-400 mt-1">{formErrors.title}</p>
+              )}
             </div>
 
             {/* Description */}
             <div className="space-y-2">
-              <Label htmlFor="description" className="text-zinc-300">Description</Label>
+              <Label htmlFor="description" className="text-zinc-400 font-medium mb-2 block">
+                Description
+              </Label>
               <Textarea
                 id="description"
                 placeholder="Contexte ou précisions supplémentaires sur ce projet..."
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={2}
-                className={`
-                  bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500
-                  focus:${activeTheme.borderFocus} focus:ring-2 focus:${activeTheme.ring}
-                  transition-all duration-300
-                `}
+                rows={3}
+                className="
+                  bg-zinc-900/50 border border-white/10 text-white placeholder:text-zinc-500
+                  hover:border-white/20
+                  focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20
+                  transition-all duration-200
+                  resize-none
+                "
               />
             </div>
 
             {/* Niveau de difficulté */}
             <div className="space-y-2">
-              <Label htmlFor="complexity" className="text-zinc-300">Niveau de difficulté</Label>
+              <Label htmlFor="complexity" className="text-zinc-400 font-medium mb-2 block">
+                Niveau de difficulté
+              </Label>
               <Select
                 value={formData.complexity_level}
                 onValueChange={(value) => setFormData({ ...formData, complexity_level: value })}
               >
                 <SelectTrigger 
                   id="complexity"
-                  className={`
-                    bg-zinc-800/50 border-zinc-700 text-white
-                    focus:${activeTheme.borderFocus} focus:ring-2 focus:${activeTheme.ring}
-                  `}
+                  className="
+                    h-11 bg-zinc-900/50 border border-white/10 text-white
+                    hover:border-white/20
+                    focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20
+                    transition-all duration-200
+                  "
                 >
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-zinc-900 border-zinc-700">
+                <SelectContent className="bg-zinc-900 border border-white/10">
                   {COMPLEXITY_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value} className="text-white">
-                      <span className="flex items-center gap-2">
-                        <span>{option.icon}</span>
-                        <span>{option.label}</span>
-                      </span>
+                    <SelectItem 
+                      key={option.value} 
+                      value={option.value}
+                      className="text-white hover:bg-indigo-500/20 focus:bg-indigo-500/20 data-[highlighted]:bg-indigo-500/20"
+                    >
+                      {option.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -791,94 +790,117 @@ export default function ProjectsPage() {
 
             {/* Niveau de longueur */}
             <div className="space-y-2">
-              <Label htmlFor="length" className="text-zinc-300">Niveau de longueur</Label>
+              <Label htmlFor="length" className="text-zinc-400 font-medium mb-2 block">
+                Niveau de longueur
+              </Label>
               <Select
                 value={formData.length_level}
                 onValueChange={(value) => setFormData({ ...formData, length_level: value })}
               >
                 <SelectTrigger 
                   id="length"
-                  className={`
-                    bg-zinc-800/50 border-zinc-700 text-white
-                    focus:${activeTheme.borderFocus} focus:ring-2 focus:${activeTheme.ring}
-                  `}
+                  className="
+                    h-11 bg-zinc-900/50 border border-white/10 text-white
+                    hover:border-white/20
+                    focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20
+                    transition-all duration-200
+                  "
                 >
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-zinc-900 border-zinc-700">
+                <SelectContent className="bg-zinc-900 border border-white/10">
                   {LENGTH_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value} className="text-white">
+                    <SelectItem 
+                      key={option.value} 
+                      value={option.value}
+                      className="text-white hover:bg-indigo-500/20 focus:bg-indigo-500/20 data-[highlighted]:bg-indigo-500/20"
+                    >
                       {option.fullLabel}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-zinc-500">
-                Définit la longueur du traitement de ce sujet dans le Flow.
+              <p className="text-xs text-zinc-500 mt-1">
+                Définit la longueur du traitement de ce sujet dans le Flow
               </p>
             </div>
 
             {/* Instructions */}
             <div className="space-y-2">
-              <Label htmlFor="instructions" className="text-zinc-300">Instructions personnalisées</Label>
+              <Label htmlFor="instructions" className="text-zinc-400 font-medium mb-2 block">
+                Instructions personnalisées
+              </Label>
               <Textarea
                 id="instructions"
                 placeholder="Ex : Explique de manière pédagogique, focus sur les impacts sur les marchés, pas de blabla inutile."
                 value={formData.instructions}
                 onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
-                rows={3}
-                className={`
-                  bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500
-                  focus:${activeTheme.borderFocus} focus:ring-2 focus:${activeTheme.ring}
-                  transition-all duration-300
-                `}
+                rows={4}
+                className="
+                  bg-zinc-900/50 border border-white/10 text-white placeholder:text-zinc-500
+                  hover:border-white/20
+                  focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20
+                  transition-all duration-200
+                  resize-none
+                "
               />
-              <p className="text-xs text-zinc-500">Si vide, une instruction par défaut sera générée</p>
+              <p className="text-xs text-zinc-500 mt-1">
+                Si vide, une instruction par défaut sera générée automatiquement
+              </p>
             </div>
 
-            {/* Switch Actif avec couleur thématique */}
-            <div className={`
-              flex items-center justify-between p-4 rounded-xl
-              ${activeTheme.bgCard} border ${activeTheme.border}
-            `}>
+            {/* Switch Projet actif */}
+            <div className="
+              flex items-center justify-between p-4 rounded-lg
+              bg-zinc-900/30 border border-white/10
+            ">
               <div>
-                <Label htmlFor="is_active" className="text-white font-medium">Projet actif</Label>
-                <p className="text-xs text-zinc-400 mt-1">
-                  Les projets actifs apparaissent dans ton Flow quotidien
+                <Label htmlFor="is_active" className="text-white font-medium">
+                  Projet actif
+                </Label>
+                <p className="text-xs text-zinc-500 mt-1">
+                  Les projets actifs apparaissent dans votre Flow quotidien
                 </p>
               </div>
               <Switch
                 id="is_active"
                 checked={formData.is_active}
                 onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-                className={activeTheme.switchOn}
+                className="data-[state=checked]:bg-indigo-600 data-[state=unchecked]:bg-zinc-700"
               />
             </div>
           </div>
 
-          <DialogFooter className="gap-3">
+          {/* Footer avec boutons */}
+          <DialogFooter className="px-6 py-4 border-t border-white/10 gap-3">
             <Button 
               variant="outline" 
               onClick={() => setDialogOpen(false)} 
               disabled={saving}
-              className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+              className="
+                border border-white/10 text-zinc-300 
+                hover:bg-zinc-800 hover:text-white
+                disabled:opacity-50
+              "
             >
               Annuler
             </Button>
             <Button 
               onClick={handleSaveProject} 
               disabled={saving || !formData.domain || !formData.title}
-              className={`
-                ${activeTheme.bgButton} ${activeTheme.bgButtonHover}
+              className="
+                w-full sm:w-auto
+                bg-gradient-to-r from-indigo-600 to-purple-600
+                hover:from-indigo-500 hover:to-purple-500
                 text-white font-semibold
-                shadow-lg ${activeTheme.glow}
+                shadow-lg shadow-indigo-500/25
                 transition-all duration-300
-                disabled:opacity-50
-              `}
+                disabled:opacity-50 disabled:cursor-not-allowed
+              "
             >
               {saving ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Enregistrement...
                 </>
               ) : editingProject ? (

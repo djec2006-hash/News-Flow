@@ -66,6 +66,42 @@ export default function DashboardPage() {
 
   const supabaseEnabled = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
 
+  // Gérer le retour après paiement Stripe
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const params = new URLSearchParams(window.location.search)
+    const success = params.get("success")
+    const canceled = params.get("canceled")
+
+    if (success === "true") {
+      toast({
+        title: "🎉 Paiement réussi !",
+        description: "Votre abonnement a été activé avec succès. Rechargez la page si nécessaire.",
+        duration: 8000,
+      })
+      
+      // Nettoyer l'URL
+      window.history.replaceState({}, "", "/dashboard")
+      
+      // Recharger les données du profil
+      setTimeout(() => {
+        router.refresh()
+      }, 1000)
+    }
+
+    if (canceled === "true") {
+      toast({
+        title: "Paiement annulé",
+        description: "Vous pouvez réessayer à tout moment depuis la page Tarifs.",
+        variant: "default",
+      })
+      
+      // Nettoyer l'URL
+      window.history.replaceState({}, "", "/dashboard")
+    }
+  }, [router, toast])
+
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [generationPhase, setGenerationPhase] = useState<"idle" | "enhancing" | "generating" | "finalizing">("idle")

@@ -2,10 +2,14 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Check, ChevronDown, TrendingUp, Shield, MousePointerClick } from "lucide-react"
+import { Check, ChevronDown, TrendingUp, Shield, MousePointerClick, Loader2 } from "lucide-react"
 import { motion, type Variants } from "framer-motion"
 import Navbar from "@/components/layout/navbar"
+import { getPlanConfig } from "@/lib/plans"
+import { useToast } from "@/hooks/use-toast"
+import { createClient } from "@/lib/supabase/client"
 
 // Variants pour animations
 const fadeInUp: Variants = {
@@ -115,7 +119,80 @@ const faqs = [
 ]
 
 export default function PricingPage() {
+  const router = useRouter()
+  const { toast } = useToast()
+  const supabase = createClient()
   const [openFaq, setOpenFaq] = useState<number | null>(null)
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
+
+  // Gérer le checkout Stripe
+  const handleCheckout = async (planType: "basic" | "pro") => {
+    try {
+      setLoadingPlan(planType)
+
+      // Vérifier l'authentification
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        // Rediriger vers login avec un paramètre pour revenir après
+        toast({
+          title: "Connexion requise",
+          description: "Veuillez vous connecter pour souscrire à un abonnement.",
+        })
+        router.push(`/login?redirect=/pricing&plan=${planType}`)
+        return
+      }
+
+      // Récupérer la configuration du plan
+      const planConfig = getPlanConfig(planType)
+      
+      if (!planConfig.stripePriceId || planConfig.stripePriceId.startsWith("price_PLACEHOLDER")) {
+        toast({
+          title: "Configuration manquante",
+          description: "Le prix Stripe n'est pas configuré pour ce plan. Contactez le support.",
+          variant: "destructive",
+        })
+        setLoadingPlan(null)
+        return
+      }
+
+      // Appeler l'API pour créer la session Stripe
+      const response = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          priceId: planConfig.stripePriceId,
+          planType: planType,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Erreur lors de la création de la session de paiement")
+      }
+
+      const data = await response.json()
+
+      if (data.url) {
+        // Rediriger vers Stripe Checkout
+        window.location.href = data.url
+      } else {
+        throw new Error("URL de session manquante")
+      }
+    } catch (error) {
+      console.error("[Pricing] Checkout error:", error)
+      toast({
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Impossible de créer la session de paiement",
+        variant: "destructive",
+      })
+      setLoadingPlan(null)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -235,18 +312,35 @@ export default function PricingPage() {
                     </ul>
 
                     {/* CTA */}
-                    <Button
-                      asChild
-                      className={`w-full py-6 text-base font-semibold rounded-xl transition-all duration-300 ${
-                        plan.planId === 'basic'
-                          ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:shadow-lg hover:shadow-cyan-500/50"
-                          : plan.planId === 'pro'
-                          ? "bg-gradient-to-r from-amber-500 via-orange-500 to-purple-500 text-white hover:shadow-lg hover:shadow-amber-500/50"
-                          : "bg-white/5 text-white hover:bg-white/10 border border-white/10"
-                      }`}
-                    >
-                      <Link href={plan.href}>{plan.cta}</Link>
-                    </Button>
+                    {plan.planId === "free" ? (
+                      <Button
+                        asChild
+                        className="w-full py-6 text-base font-semibold rounded-xl transition-all duration-300 bg-white/5 text-white hover:bg-white/10 border border-white/10"
+                      >
+                        <Link href={plan.href}>{plan.cta}</Link>
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => handleCheckout(plan.planId as "basic" | "pro")}
+                        disabled={loadingPlan !== null}
+                        className={`w-full py-6 text-base font-semibold rounded-xl transition-all duration-300 ${
+                          plan.planId === 'basic'
+                            ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:shadow-lg hover:shadow-cyan-500/50 disabled:opacity-50"
+                            : plan.planId === 'pro'
+                            ? "bg-gradient-to-r from-amber-500 via-orange-500 to-purple-500 text-white hover:shadow-lg hover:shadow-amber-500/50 disabled:opacity-50"
+                            : ""
+                        }`}
+                      >
+                        {loadingPlan === plan.planId ? (
+                          <>
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                            Redirection vers Stripe...
+                          </>
+                        ) : (
+                          plan.cta
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </motion.div>
