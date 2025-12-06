@@ -40,7 +40,7 @@ const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
     label: "Basic",
     pricePerMonth: "9,90 €/mois",
     priceAmount: 9.90,
-    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_BASIC || "prod_TY67DUWQadvvuS", // TODO: Remplacer par votre ID Stripe
+    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_BASIC || "price_1SazviQNIppG3iVMBRJQIj63", // TODO: Remplacer par votre ID Stripe
     maxProjects: 5,
     maxRecapsPerWeek: 5,
     description: "L'essentiel pour rester informé",
@@ -61,7 +61,7 @@ const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
     label: "Pro",
     pricePerMonth: "16,90 €/mois",
     priceAmount: 16.90,
-    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO || "prod_TY68x7Pr2mmW34", // TODO: Remplacer par votre ID Stripe
+    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO || "price_1SazwVQNIppG3iVMDmq10b41", // TODO: Remplacer par votre ID Stripe
     maxProjects: 15,
     maxRecapsPerWeek: 15,
     description: "Pour les power users exigeants",
