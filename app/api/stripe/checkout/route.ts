@@ -1,67 +1,52 @@
 import { NextResponse } from "next/server"
-import Stripe from "stripe"
 import { createClient } from "@/lib/supabase/server"
-import { getPlanConfig } from "@/lib/plans"
+import Stripe from "stripe"
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// 💳 STRIPE CHECKOUT - Création de session de paiement
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2024-12-18.acacia",
-  typescript: true,
-})
+// ❌ NE PAS INITIALISER STRIPE ICI (C'est ça qui plante)
+// const stripe = new Stripe(...) <--- SUPPRIMEZ ÇA SI VOUS L'AVEZ ENCORE
 
 export async function POST(request: Request) {
-  console.log("============================================")
-  console.log("[Stripe Checkout] 🚀 Creating checkout session...")
-  console.log("============================================")
-
   try {
-    // 🔐 Vérifier l'authentification
+    console.log("API Paiement appelée...")
+
+    // 1. Récupération de la clé à l'intérieur de la fonction (Sécurité)
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY
+
+    if (!stripeSecretKey) {
+      console.error("❌ ERREUR CRITIQUE : La clé STRIPE_SECRET_KEY est introuvable dans .env.local")
+      return NextResponse.json(
+        { error: "Configuration Stripe manquante sur le serveur" },
+        { status: 500 }
+      )
+    }
+
+    // 2. Initialisation de Stripe "Just-in-Time"
+    const stripe = new Stripe(stripeSecretKey, {
+      apiVersion: "2025-02-24.acacia" as any, // Utilise la version la plus récente
+      typescript: true,
+    })
+
+    // 3. Authentification utilisateur
     const supabase = await createClient()
     const {
       data: { user },
-      error: authError,
     } = await supabase.auth.getUser()
 
-    if (authError || !user) {
-      console.log("[Stripe Checkout] ❌ User not authenticated")
+    if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 })
     }
 
-    console.log("[Stripe Checkout] ✅ User authenticated:", user.id)
-
-    // 📦 Récupérer les données de la requête
+    // 4. Récupération du Body (Le plan choisi)
     const body = await request.json()
-    const { priceId, planType } = body
+    const { priceId } = body
 
-    if (!priceId || !planType) {
-      console.log("[Stripe Checkout] ❌ Missing priceId or planType")
-      return NextResponse.json(
-        { error: "priceId et planType sont requis" },
-        { status: 400 }
-      )
+    if (!priceId) {
+      return NextResponse.json({ error: "Price ID manquant" }, { status: 400 })
     }
 
-    // Vérifier que le planType est valide
-    const planConfig = getPlanConfig(planType)
-    if (!planConfig || planType === "free") {
-      return NextResponse.json(
-        { error: "Plan invalide" },
-        { status: 400 }
-      )
-    }
+    console.log(`Création session Stripe pour user ${user.id} et prix ${priceId}`)
 
-    console.log("[Stripe Checkout] 📋 Plan:", planType)
-    console.log("[Stripe Checkout] 💰 Price ID:", priceId)
-
-    // 🌐 Récupérer l'origine (pour les URLs de retour)
-    const origin = request.headers.get("origin") || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-
-    console.log("[Stripe Checkout] 🌐 Origin:", origin)
-
-    // 💳 Créer la session Stripe Checkout
+    // 5. Création de la session de paiement
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
@@ -71,37 +56,27 @@ export async function POST(request: Request) {
           quantity: 1,
         },
       ],
-      client_reference_id: user.id, // 🔑 CRUCIAL : Pour identifier l'utilisateur dans le webhook
+      // Redirections (Changez l'URL si vous êtes en prod)
+      success_url: `${request.headers.get("origin")}/dashboard?payment=success`,
+      cancel_url: `${request.headers.get("origin")}/pricing?payment=cancelled`,
+      // Métadonnées cruciales pour le Webhook plus tard
+      client_reference_id: user.id,
       metadata: {
-        planType: planType, // 🔑 CRUCIAL : Pour savoir quel plan activer
         userId: user.id,
-        userEmail: user.email || "",
       },
-      success_url: `${origin}/dashboard?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/pricing?canceled=true`,
-      customer_email: user.email || undefined, // Pré-remplir l'email
-      allow_promotion_codes: true, // Autoriser les codes promo Stripe
     })
 
-    console.log("[Stripe Checkout] ✅ Session created:", session.id)
-    console.log("[Stripe Checkout] 🔗 Session URL:", session.url)
+    if (!session.url) {
+      throw new Error("Pas d'URL de session générée")
+    }
 
-    return NextResponse.json({
-      url: session.url,
-      sessionId: session.id,
-    })
-  } catch (error) {
-    console.error("============================================")
-    console.error("[Stripe Checkout] ❌ ERROR:")
-    console.error(error)
-    console.error("============================================")
+    return NextResponse.json({ url: session.url })
 
+  } catch (error: any) {
+    console.error("❌ Erreur Stripe Checkout:", error)
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Erreur lors de la création de la session",
-      },
+      { error: error.message || "Erreur interne lors du paiement" },
       { status: 500 }
     )
   }
 }
-

@@ -60,3 +60,5 @@ FROM information_schema.columns
 WHERE table_name = 'content_preferences' 
 AND column_name IN ('email_recipients', 'email_time', 'email_active', 'email_days');
 
+
+
