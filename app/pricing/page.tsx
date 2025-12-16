@@ -126,9 +126,11 @@ export default function PricingPage() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
 
   // Gérer le checkout Stripe
-  const handleCheckout = async (planType: "basic" | "pro") => {
+  const handleCheckout = async (priceId: string, planId?: string) => {
     try {
-      setLoadingPlan(planType)
+      if (planId) {
+        setLoadingPlan(planId)
+      }
 
       // Vérifier l'authentification
       const {
@@ -141,20 +143,22 @@ export default function PricingPage() {
           title: "Connexion requise",
           description: "Veuillez vous connecter pour souscrire à un abonnement.",
         })
-        router.push(`/login?redirect=/pricing&plan=${planType}`)
+        router.push(`/login?redirect=/pricing`)
+        if (planId) {
+          setLoadingPlan(null)
+        }
         return
       }
 
-      // Récupérer la configuration du plan
-      const planConfig = getPlanConfig(planType)
-      
-      if (!planConfig.stripePriceId || planConfig.stripePriceId.startsWith("price_PLACEHOLDER")) {
+      if (!priceId || priceId.startsWith("price_PLACEHOLDER")) {
         toast({
           title: "Configuration manquante",
           description: "Le prix Stripe n'est pas configuré pour ce plan. Contactez le support.",
           variant: "destructive",
         })
-        setLoadingPlan(null)
+        if (planId) {
+          setLoadingPlan(null)
+        }
         return
       }
 
@@ -164,16 +168,8 @@ export default function PricingPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          priceId: planConfig.stripePriceId,
-          planType: planType,
-        }),
+        body: JSON.stringify({ priceId }),
       })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || "Erreur lors de la création de la session de paiement")
-      }
 
       const data = await response.json()
 
@@ -181,16 +177,22 @@ export default function PricingPage() {
         // Rediriger vers Stripe Checkout
         window.location.href = data.url
       } else {
-        throw new Error("URL de session manquante")
+        console.error("Erreur:", data.error)
+        alert("Erreur lors de la redirection Stripe")
+        if (planId) {
+          setLoadingPlan(null)
+        }
       }
     } catch (error) {
-      console.error("[Pricing] Checkout error:", error)
+      console.error("Erreur fetch:", error)
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Impossible de créer la session de paiement",
+        description: "Impossible de créer la session de paiement",
         variant: "destructive",
       })
-      setLoadingPlan(null)
+      if (planId) {
+        setLoadingPlan(null)
+      }
     }
   }
 
@@ -321,7 +323,18 @@ export default function PricingPage() {
                       </Button>
                     ) : (
                       <Button
-                        onClick={() => handleCheckout(plan.planId as "basic" | "pro")}
+                        onClick={() => {
+                          const planConfig = getPlanConfig(plan.planId)
+                          if (planConfig.stripePriceId) {
+                            handleCheckout(planConfig.stripePriceId, plan.planId)
+                          } else {
+                            toast({
+                              title: "Erreur",
+                              description: "Le prix Stripe n'est pas configuré pour ce plan.",
+                              variant: "destructive",
+                            })
+                          }
+                        }}
                         disabled={loadingPlan !== null}
                         className={`w-full py-6 text-base font-semibold rounded-xl transition-all duration-300 ${
                           plan.planId === 'basic'

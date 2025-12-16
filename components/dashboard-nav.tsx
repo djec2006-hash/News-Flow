@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
-import { Newspaper, History, Settings, LogOut, FolderKanban, Radio, Mail } from "lucide-react"
+import { Newspaper, History, Settings, LogOut, FolderKanban, Radio, Mail, Activity } from "lucide-react"
 import Logo from "@/components/ui/logo"
 
 export function DashboardNav() {
@@ -20,6 +20,7 @@ export function DashboardNav() {
   const navItems = [
     { href: "/dashboard", label: "Mon flux", icon: Newspaper },
     { href: "/dashboard/projects", label: "Gestion de projets", icon: FolderKanban },
+    { href: "/dashboard/live-feed", label: "Live Feed", icon: Activity },
     { href: "/dashboard/email-config", label: "Emails & Alertes", icon: Mail },
     { href: "/dashboard/history", label: "Historique", icon: History },
     { href: "/dashboard/settings", label: "Profil", icon: Settings },

@@ -286,6 +286,86 @@ function getLengthBadgeStyle(theme: ThemeColors) {
   return `${theme.bgBadge} ${theme.text} border ${theme.border} opacity-80`
 }
 
+// Fonctions pour les couleurs conditionnelles des sélecteurs
+function getComplexityItemClass(value: string, selectedValue: string): string {
+  const isSelected = value === selectedValue
+  const baseClasses = "cursor-pointer transition-colors"
+  
+  if (!isSelected) {
+    return `${baseClasses} text-zinc-400 bg-zinc-800 hover:bg-zinc-700 hover:text-white data-[highlighted]:bg-zinc-700 data-[highlighted]:text-white`
+  }
+  
+  // Couleurs selon la valeur sélectionnée
+  if (value === "standard") {
+    return `${baseClasses} bg-blue-600 text-white data-[highlighted]:bg-blue-700`
+  }
+  if (value === "expert") {
+    return `${baseClasses} bg-orange-600 text-white data-[highlighted]:bg-orange-700`
+  }
+  
+  // Par défaut, gris pour les autres valeurs
+  return `${baseClasses} bg-zinc-700 text-white data-[highlighted]:bg-zinc-600`
+}
+
+function getLengthItemClass(value: string, selectedValue: string): string {
+  const isSelected = value === selectedValue
+  const baseClasses = "cursor-pointer transition-colors"
+  
+  if (!isSelected) {
+    return `${baseClasses} text-zinc-400 bg-zinc-800 hover:bg-zinc-700 hover:text-white data-[highlighted]:bg-zinc-700 data-[highlighted]:text-white`
+  }
+  
+  // Couleurs selon la valeur sélectionnée
+  if (value === "very_short" || value === "short") {
+    return `${baseClasses} bg-emerald-600 text-white data-[highlighted]:bg-emerald-700`
+  }
+  if (value === "standard") {
+    return `${baseClasses} bg-blue-600 text-white data-[highlighted]:bg-blue-700`
+  }
+  if (value === "very_detailed") {
+    return `${baseClasses} bg-purple-600 text-white data-[highlighted]:bg-purple-700`
+  }
+  
+  // Par défaut
+  return `${baseClasses} bg-zinc-700 text-white data-[highlighted]:bg-zinc-600`
+}
+
+function getComplexityTriggerClass(selectedValue: string): string {
+  if (selectedValue === "standard") {
+    return "h-11 bg-zinc-900/50 border border-blue-500/50 text-white hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
+  }
+  if (selectedValue === "expert") {
+    return "h-11 bg-zinc-900/50 border border-orange-500/50 text-white hover:border-orange-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all duration-200"
+  }
+  return "h-11 bg-zinc-900/50 border border-white/10 text-white hover:border-white/20 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all duration-200"
+}
+
+function getLengthTriggerClass(selectedValue: string): string {
+  if (selectedValue === "very_short" || selectedValue === "short") {
+    return "h-11 bg-zinc-900/50 border border-emerald-500/50 text-white hover:border-emerald-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200"
+  }
+  if (selectedValue === "standard") {
+    return "h-11 bg-zinc-900/50 border border-blue-500/50 text-white hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
+  }
+  if (selectedValue === "very_detailed") {
+    return "h-11 bg-zinc-900/50 border border-purple-500/50 text-white hover:border-purple-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all duration-200"
+  }
+  return "h-11 bg-zinc-900/50 border border-white/10 text-white hover:border-white/20 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all duration-200"
+}
+
+// Fonction helper pour le sélecteur de langue (si ajouté plus tard)
+function getLanguageItemClass(value: string, selectedValue: string): string {
+  const isSelected = value === selectedValue
+  const baseClasses = "cursor-pointer transition-colors"
+  
+  if (!isSelected) {
+    return `${baseClasses} text-zinc-400 bg-zinc-800 hover:bg-zinc-700 hover:text-white data-[highlighted]:bg-zinc-700 data-[highlighted]:text-white`
+  }
+  
+  // Indigo pour la langue sélectionnée
+  return `${baseClasses} bg-indigo-600 text-white data-[highlighted]:bg-indigo-700`
+}
+
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<CustomTopic[]>([])
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -765,12 +845,7 @@ export default function ProjectsPage() {
               >
                 <SelectTrigger 
                   id="complexity"
-                  className="
-                    h-11 bg-zinc-900/50 border border-white/10 text-white
-                    hover:border-white/20
-                    focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20
-                    transition-all duration-200
-                  "
+                  className={getComplexityTriggerClass(formData.complexity_level)}
                 >
                   <SelectValue />
                 </SelectTrigger>
@@ -779,7 +854,7 @@ export default function ProjectsPage() {
                     <SelectItem 
                       key={option.value} 
                       value={option.value}
-                      className="text-white hover:bg-indigo-500/20 focus:bg-indigo-500/20 data-[highlighted]:bg-indigo-500/20"
+                      className={getComplexityItemClass(option.value, formData.complexity_level)}
                     >
                       {option.label}
                     </SelectItem>
@@ -799,12 +874,7 @@ export default function ProjectsPage() {
               >
                 <SelectTrigger 
                   id="length"
-                  className="
-                    h-11 bg-zinc-900/50 border border-white/10 text-white
-                    hover:border-white/20
-                    focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20
-                    transition-all duration-200
-                  "
+                  className={getLengthTriggerClass(formData.length_level)}
                 >
                   <SelectValue />
                 </SelectTrigger>
@@ -813,7 +883,7 @@ export default function ProjectsPage() {
                     <SelectItem 
                       key={option.value} 
                       value={option.value}
-                      className="text-white hover:bg-indigo-500/20 focus:bg-indigo-500/20 data-[highlighted]:bg-indigo-500/20"
+                      className={getLengthItemClass(option.value, formData.length_level)}
                     >
                       {option.fullLabel}
                     </SelectItem>
@@ -987,23 +1057,19 @@ export default function ProjectsPage() {
                   transition={{ delay: index * 0.05 }}
                 >
                   {/* ═══════════════════════════════════════════════════════════
-                      TÂCHE 2 : CARTES AVEC COULEURS THÉMATIQUES
+                      CARTE DE PROJET - STYLE DARK MODE NEUTRE
                       ═══════════════════════════════════════════════════════════ */}
                   <Card
                     className={`
                       relative overflow-hidden
-                      bg-zinc-900/60 backdrop-blur-sm
-                      border-2 ${theme.border}
-                      ${theme.borderHover}
-                      shadow-lg ${theme.glow}
-                      hover:shadow-xl hover:${theme.glowStrong}
+                      bg-zinc-900
+                      border border-zinc-800
+                      hover:border-zinc-700
                       transition-all duration-300
                       ${project.is_active ? "" : "opacity-50 grayscale-[30%]"}
                       group
                     `}
                   >
-                    {/* Glow background subtil */}
-                    <div className={`absolute inset-0 ${theme.bgCard} opacity-30`} />
                     
                     {/* Badge Actif */}
                     {project.is_active && (
@@ -1073,7 +1139,7 @@ export default function ProjectsPage() {
                     {/* Actions */}
                     <CardContent className={`
                       relative pt-4 flex items-center justify-between 
-                      border-t ${theme.border}
+                      border-t border-zinc-800
                     `}>
                       <div className="flex gap-1">
                         <Button

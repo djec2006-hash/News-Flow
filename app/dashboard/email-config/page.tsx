@@ -12,14 +12,35 @@ import { useToast } from "@/hooks/use-toast"
 import { updateEmailSettings, getEmailSettings } from "@/app/actions/update-email-settings"
 
 const DAYS_OF_WEEK = [
-  { id: 1, short: "L", full: "Lundi" },
-  { id: 2, short: "M", full: "Mardi" },
-  { id: 3, short: "M", full: "Mercredi" },
-  { id: 4, short: "J", full: "Jeudi" },
-  { id: 5, short: "V", full: "Vendredi" },
-  { id: 6, short: "S", full: "Samedi" },
-  { id: 0, short: "D", full: "Dimanche" },
+  { id: 1, short: "L", full: "Lundi", code: "L" },
+  { id: 2, short: "M", full: "Mardi", code: "Ma" },
+  { id: 3, short: "M", full: "Mercredi", code: "Me" },
+  { id: 4, short: "J", full: "Jeudi", code: "J" },
+  { id: 5, short: "V", full: "Vendredi", code: "V" },
+  { id: 6, short: "S", full: "Samedi", code: "S" },
+  { id: 0, short: "D", full: "Dimanche", code: "D" },
 ]
+
+// Mapping entre les IDs numériques et les codes strings (pour la base de données)
+const DAY_ID_TO_CODE: Record<number, string> = {
+  0: "D",
+  1: "L",
+  2: "Ma",
+  3: "Me",
+  4: "J",
+  5: "V",
+  6: "S",
+}
+
+const DAY_CODE_TO_ID: Record<string, number> = {
+  D: 0,
+  L: 1,
+  Ma: 2,
+  Me: 3,
+  J: 4,
+  V: 5,
+  S: 6,
+}
 
 // Génération complète des heures (00:00 à 23:30 avec demi-heures)
 const HOUR_OPTIONS = Array.from({ length: 48 }, (_, i) => {
@@ -33,14 +54,14 @@ export default function EmailConfigPage() {
   
   // États du formulaire
   const [enabled, setEnabled] = useState(false)
-  const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]) // Jours ouvrés par défaut
+  const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]) // Jours ouvrés par défaut (pour l'UI)
   const [selectedHour, setSelectedHour] = useState("08:00")
   const [emails, setEmails] = useState<string[]>([])
   const [newEmail, setNewEmail] = useState("")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
-  // Charger la config existante depuis content_preferences via Server Action
+  // Charger la config existante depuis email_settings via Server Action
   useEffect(() => {
     loadConfig()
   }, [])
@@ -51,13 +72,22 @@ export default function EmailConfigPage() {
       const settings = await getEmailSettings()
       
       if (settings) {
-        setEnabled(settings.email_active)
-        setSelectedDays(settings.email_days)
-        setSelectedHour(settings.email_time)
-        setEmails(settings.email_recipients)
+        setEnabled(settings.is_enabled)
+        // Convertir les codes de jours en IDs numériques pour l'UI
+        const dayIds = settings.delivery_days
+          .map((dayCode) => DAY_CODE_TO_ID[dayCode])
+          .filter((id) => id !== undefined) as number[]
+        setSelectedDays(dayIds.length > 0 ? dayIds : [1, 2, 3, 4, 5])
+        setSelectedHour(settings.delivery_time || "08:00")
+        setEmails(settings.recipients || [])
         console.log("[EmailConfig] ✅ Settings loaded:", settings)
       } else {
+        // Valeurs par défaut si pas de settings
         console.log("[EmailConfig] No existing settings, using defaults")
+        setEnabled(false)
+        setSelectedDays([1, 2, 3, 4, 5])
+        setSelectedHour("08:00")
+        setEmails([])
       }
     } catch (error) {
       console.error("[EmailConfig] Error loading config:", error)
@@ -130,16 +160,21 @@ export default function EmailConfigPage() {
   const saveConfig = async () => {
     setSaving(true)
     try {
+      // Convertir les IDs numériques en codes strings pour la base de données
+      const deliveryDays = selectedDays
+        .map((dayId) => DAY_ID_TO_CODE[dayId])
+        .filter((day) => day !== undefined)
+
       const result = await updateEmailSettings({
-        email_active: enabled,
-        email_days: selectedDays,
-        email_time: selectedHour,
-        email_recipients: emails,
+        is_enabled: enabled,
+        delivery_days: deliveryDays,
+        delivery_time: selectedHour,
+        recipients: emails,
       })
 
       if (result.success) {
         toast({
-          title: "✅ Préférences enregistrées",
+          title: "✅ Succès",
           description: result.message,
         })
       } else {

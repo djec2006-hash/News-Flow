@@ -4,10 +4,10 @@ import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 
 export interface EmailSettings {
-  email_active: boolean
-  email_days: number[]
-  email_time: string
-  email_recipients: string[]
+  is_enabled: boolean
+  delivery_days: string[]
+  delivery_time: string
+  recipients: string[]
 }
 
 export interface UpdateEmailSettingsResult {
@@ -17,7 +17,7 @@ export interface UpdateEmailSettingsResult {
 }
 
 /**
- * Met à jour les paramètres d'email dans content_preferences
+ * Met à jour les paramètres d'email dans email_settings
  */
 export async function updateEmailSettings(
   settings: EmailSettings
@@ -45,7 +45,7 @@ export async function updateEmailSettings(
     console.log("[EmailSettings] User authenticated:", user.id)
 
     // Validation des données
-    if (settings.email_active && settings.email_recipients.length === 0) {
+    if (settings.is_enabled && settings.recipients.length === 0) {
       return {
         success: false,
         message: "Veuillez ajouter au moins une adresse email",
@@ -53,7 +53,7 @@ export async function updateEmailSettings(
       }
     }
 
-    if (settings.email_recipients.length > 3) {
+    if (settings.recipients.length > 3) {
       return {
         success: false,
         message: "Maximum 3 adresses email autorisées",
@@ -63,7 +63,7 @@ export async function updateEmailSettings(
 
     // Validation des emails
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    for (const email of settings.email_recipients) {
+    for (const email of settings.recipients) {
       if (!emailRegex.test(email)) {
         return {
           success: false,
@@ -73,17 +73,26 @@ export async function updateEmailSettings(
       }
     }
 
-    // Mettre à jour content_preferences avec upsert
+    // Validation de l'heure (format HH:MM)
+    const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/
+    if (!timeRegex.test(settings.delivery_time)) {
+      return {
+        success: false,
+        message: "Format d'heure invalide (attendu: HH:MM)",
+        error: "INVALID_TIME",
+      }
+    }
+
+    // Mettre à jour email_settings avec upsert
     const { error: updateError } = await supabase
-      .from("content_preferences")
+      .from("email_settings")
       .upsert(
         {
           user_id: user.id,
-          email_active: settings.email_active,
-          email_days: settings.email_days,
-          email_time: settings.email_time,
-          email_recipients: settings.email_recipients,
-          updated_at: new Date().toISOString(),
+          is_enabled: settings.is_enabled,
+          delivery_days: settings.delivery_days,
+          delivery_time: settings.delivery_time,
+          recipients: settings.recipients,
         },
         { onConflict: "user_id" }
       )
@@ -117,7 +126,7 @@ export async function updateEmailSettings(
 }
 
 /**
- * Récupère les paramètres d'email actuels
+ * Récupère les paramètres d'email actuels depuis email_settings
  */
 export async function getEmailSettings(): Promise<EmailSettings | null> {
   try {
@@ -130,27 +139,37 @@ export async function getEmailSettings(): Promise<EmailSettings | null> {
     if (!user) return null
 
     const { data, error } = await supabase
-      .from("content_preferences")
-      .select("email_active, email_days, email_time, email_recipients")
+      .from("email_settings")
+      .select("is_enabled, delivery_days, delivery_time, recipients")
       .eq("user_id", user.id)
       .single()
 
-    if (error || !data) {
-      console.log("[EmailSettings] No existing settings found")
+    if (error) {
+      // PGRST116 = no rows returned (pas de settings existants)
+      if (error.code === "PGRST116") {
+        console.log("[EmailSettings] No existing settings found, returning defaults")
+        return null
+      }
+      console.error("[EmailSettings] Error fetching:", error)
+      return null
+    }
+
+    if (!data) {
       return null
     }
 
     return {
-      email_active: data.email_active ?? false,
-      email_days: data.email_days ?? [1, 2, 3, 4, 5],
-      email_time: data.email_time ?? "08:00",
-      email_recipients: data.email_recipients ?? [],
+      is_enabled: data.is_enabled ?? false,
+      delivery_days: data.delivery_days ?? [],
+      delivery_time: data.delivery_time ?? "08:00",
+      recipients: data.recipients ?? [],
     }
   } catch (error) {
     console.error("[EmailSettings] Error fetching settings:", error)
     return null
   }
 }
+
 
 
 
