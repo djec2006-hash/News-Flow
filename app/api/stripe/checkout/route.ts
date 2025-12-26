@@ -2,41 +2,39 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import Stripe from "stripe"
 
-// ❌ NE PAS INITIALISER STRIPE ICI (C'est ça qui plante)
-// const stripe = new Stripe(...) <--- SUPPRIMEZ ÇA SI VOUS L'AVEZ ENCORE
-
 export async function POST(request: Request) {
   try {
     console.log("API Paiement appelée...")
 
-    // 1. Récupération de la clé à l'intérieur de la fonction (Sécurité)
+    // 1. Récupération de la clé
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY
 
     if (!stripeSecretKey) {
-      console.error("❌ ERREUR CRITIQUE : La clé STRIPE_SECRET_KEY est introuvable dans .env.local")
+      console.error("❌ ERREUR : STRIPE_SECRET_KEY introuvable.")
+      // Astuce Debug : On affiche la liste des clés dispo (SANS les valeurs) pour voir si elle est là
+      console.log("Clés disponibles:", Object.keys(process.env)) 
+      
       return NextResponse.json(
         { error: "Configuration Stripe manquante sur le serveur" },
         { status: 500 }
       )
     }
 
-    // 2. Initialisation de Stripe "Just-in-Time"
+    // 2. Initialisation Stripe
     const stripe = new Stripe(stripeSecretKey, {
-      apiVersion: "2025-02-24.acacia" as any, // Utilise la version la plus récente
+      apiVersion: "2025-02-24.acacia" as any,
       typescript: true,
     })
 
-    // 3. Authentification utilisateur
+    // 3. Authentification
     const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 })
     }
 
-    // 4. Récupération du Body (Le plan choisi)
+    // 4. Récupération du prix
     const body = await request.json()
     const { priceId } = body
 
@@ -44,22 +42,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Price ID manquant" }, { status: 400 })
     }
 
-    console.log(`Création session Stripe pour user ${user.id} et prix ${priceId}`)
-
-    // 5. Création de la session de paiement
+    // 5. Création Session (+ CODE PROMO AJOUTÉ ICI)
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
+      // ✅ C'est ici qu'on active les coupons !
+      allow_promotion_codes: true, 
       line_items: [
         {
           price: priceId,
           quantity: 1,
         },
       ],
-      // Redirections (Changez l'URL si vous êtes en prod)
       success_url: `${request.headers.get("origin")}/dashboard?payment=success`,
       cancel_url: `${request.headers.get("origin")}/pricing?payment=cancelled`,
-      // Métadonnées cruciales pour le Webhook plus tard
       client_reference_id: user.id,
       metadata: {
         userId: user.id,
@@ -75,7 +71,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error("❌ Erreur Stripe Checkout:", error)
     return NextResponse.json(
-      { error: error.message || "Erreur interne lors du paiement" },
+      { error: error.message || "Erreur interne" },
       { status: 500 }
     )
   }

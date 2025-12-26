@@ -66,3 +66,4 @@ COMMENT ON COLUMN public.email_settings.delivery_days IS 'Jours de la semaine po
 COMMENT ON COLUMN public.email_settings.delivery_time IS 'Heure d''envoi au format HH:MM (ex: "08:00")';
 COMMENT ON COLUMN public.email_settings.recipients IS 'Liste des adresses email destinataires (max 3)';
 
+
