@@ -3,72 +3,69 @@ import { NextResponse } from "next/server"
 import Stripe from "stripe"
 import { createClient } from "@supabase/supabase-js"
 
-// ⚠️ IMPORTANT : On n'initialise PAS Stripe ici (en dehors de la fonction)
-// On le fera à l'intérieur pour éviter le crash au build.
+// 1. Initialisation de Stripe avec la NOUVELLE variable STRIPE_SK
+const stripe = new Stripe(process.env.STRIPE_SK!, {
+  apiVersion: "2025-02-24.acacia" as any,
+  typescript: true,
+})
+
+// 2. Initialisation de Supabase (Admin) pour pouvoir modifier l'user sans être connecté
+// Attention : On utilise la clé SERVICE_ROLE ou ANON_KEY si RLS le permet.
+// Pour faire simple ici, on suppose que tu as mis SUPABASE_URL et ANON_KEY dans Vercel.
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! // Ou SERVICE_ROLE si tu l'as
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 export async function POST(req: Request) {
   const body = await req.text()
   const signature = headers().get("Stripe-Signature") as string
 
-  // 1. Initialisation de Stripe sécurisée (à l'intérieur)
-  const stripeKey = process.env.STRIPE_SECRET_KEY
-  if (!stripeKey) {
-    console.error("❌ CLÉ MANQUANTE : STRIPE_SECRET_KEY")
-    return NextResponse.json({ error: "Config serveur manquante" }, { status: 500 })
-  }
-  
-  const stripe = new Stripe(stripeKey, {
-    apiVersion: "2025-02-24.acacia" as any,
-    typescript: true,
-  })
-
-  // 2. Vérification du Secret Webhook
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
-  if (!webhookSecret) {
-    console.error("❌ CLÉ MANQUANTE : STRIPE_WEBHOOK_SECRET")
-    return NextResponse.json({ error: "Config Webhook manquante" }, { status: 500 })
-  }
-
   let event: Stripe.Event
 
-  // 3. Vérification de la signature (C'est Stripe qui parle ?)
+  // 3. Vérification de la signature (Sécurité)
   try {
-    event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
+    if (!process.env.STRIPE_WEBHOOK_SECRET) {
+      throw new Error("STRIPE_WEBHOOK_SECRET manquant")
+    }
+    event = stripe.webhooks.constructEvent(
+      body,
+      signature,
+      process.env.STRIPE_WEBHOOK_SECRET
+    )
   } catch (error: any) {
-    console.error(`❌ Erreur signature Webhook: ${error.message}`)
-    return NextResponse.json({ error: `Webhook Error: ${error.message}` }, { status: 400 })
+    console.error("❌ Erreur Signature Webhook:", error.message)
+    return new NextResponse(`Webhook Error: ${error.message}`, { status: 400 })
   }
 
-  // 4. Initialisation Supabase Admin (pour écrire dans la base sans être connecté)
-  // On utilise le SERVICE_ROLE_KEY si dispo, sinon la clé anon (mais attention aux droits)
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  
-  const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
-  // 5. Traitement des événements
-  const session = event.data.object as Stripe.Checkout.Session
-
+  // 4. Traitement de l'événement "Paiement Réussi"
   if (event.type === "checkout.session.completed") {
-    const subscriptionId = session.subscription
-    const userId = session.metadata?.userId // On récupère l'ID qu'on avait passé dans checkout
+    const session = event.data.object as Stripe.Checkout.Session
+    const userId = session.client_reference_id // On récupère l'ID envoyé lors du paiement
 
-    console.log(`💰 Paiement réussi pour User: ${userId}`)
+    console.log(`💰 Paiement validé pour l'utilisateur : ${userId}`)
 
     if (userId) {
-      // Mettre à jour le profil utilisateur
-      // NOTE : Il faudra adapter 'plan_type' selon ta logique (pro, basic...)
-      // Ici on met un exemple générique, tu devras peut-être affiner selon le priceId
-      await supabase
-        .from("profiles")
+      // 5. Mise à jour de la base de données Supabase
+      // On met à jour la table 'users' ou 'subscriptions' (adapte selon ta table !)
+      // Exemple : On passe le champ 'is_premium' à true
+      
+      const { error } = await supabase
+        .from("users") // ⚠️ VÉRIFIE LE NOM DE TA TABLE (users ? profiles ?)
         .update({ 
-            is_subscribed: true,
+            subscription_status: "active", // ou is_premium: true
             stripe_customer_id: session.customer as string,
-            stripe_subscription_id: subscriptionId as string
-        })
+            updated_at: new Date().toISOString()
+        }) 
         .eq("id", userId)
+
+      if (error) {
+        console.error("❌ Erreur Supabase update:", error)
+        return new NextResponse("Erreur update BDD", { status: 500 })
+      }
+      
+      console.log("✅ Base de données mise à jour avec succès !")
     }
   }
 
-  return NextResponse.json({ received: true })
+  return new NextResponse(null, { status: 200 })
 }
