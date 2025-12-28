@@ -5,13 +5,10 @@ import { createClient } from "@supabase/supabase-js"
 export async function POST(req: Request) {
   try {
     const body = await req.text()
-    
-    // ✅ CORRECTION ICI : On prend les headers directement depuis la requête
-    // Plus besoin de "import { headers } from 'next/headers'" qui faisait planter
     const signature = req.headers.get("Stripe-Signature") as string
 
+    // Vérification des clés
     if (!process.env.STRIPE_SK || !process.env.STRIPE_WEBHOOK_SECRET) {
-      console.error("❌ Clés Stripe manquantes dans Vercel")
       return new NextResponse("Config serveur manquante", { status: 500 })
     }
 
@@ -20,59 +17,49 @@ export async function POST(req: Request) {
       typescript: true,
     })
 
-    // 2. Vérification Signature
+    // Vérification Signature
     let event: Stripe.Event
     try {
-      event = stripe.webhooks.constructEvent(
-        body,
-        signature,
-        process.env.STRIPE_WEBHOOK_SECRET
-      )
+      event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET)
     } catch (err: any) {
-      console.error(`⚠️ Erreur Signature: ${err.message}`)
       return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 })
     }
 
-    // 3. Connexion Supabase ADMIN (Indispensable pour modifier les users)
-    // Assure-toi d'avoir ajouté SUPABASE_SERVICE_ROLE_KEY dans Vercel !
-    // Si tu ne l'as pas, remplace par process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY (mais ça risque de bloquer niveau permissions)
+    // Connexion Admin Supabase
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    // 4. Traitement
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session
       const userId = session.client_reference_id
       const customerId = session.customer as string
 
-      console.log(`🔔 Webhook reçu pour UserID: ${userId}`)
-
       if (userId) {
-        // ⚠️ VÉRIFIE QUE TA TABLE S'APPELLE BIEN "users" (ou "profiles" ?)
+        // 👇 ICI : ON VISE LA TABLE "profiles" (et plus "users")
         const { error } = await supabaseAdmin
-          .from("users") 
+          .from("profiles") 
           .update({
             subscription_status: "active",
             stripe_customer_id: customerId,
-            updated_at: new Date().toISOString(),
+            // updated_at: new Date().toISOString(), // Décommente si tu as cette colonne
           })
           .eq("id", userId)
 
         if (error) {
           console.error("❌ Erreur Update Supabase:", error)
+          // On affiche l'erreur précise dans les logs Vercel
           return new NextResponse(`Erreur BDD: ${error.message}`, { status: 500 })
         }
-        
-        console.log("✅ Succès ! Base de données mise à jour.")
+        console.log("✅ SUCCÈS : Profil mis à jour !")
       }
     }
 
     return new NextResponse(null, { status: 200 })
 
   } catch (error: any) {
-    console.error("❌ CRASH SERVEUR:", error)
+    console.error("❌ CRASH:", error)
     return new NextResponse(`Erreur Interne: ${error.message}`, { status: 500 })
   }
 }
