@@ -2,12 +2,16 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Check, Sparkles, Zap, Shield, Target } from "lucide-react"
+import { ArrowRight, Check, Sparkles, Zap, Shield, Target, Loader2 } from "lucide-react"
 import { motion, useScroll, useTransform, type Variants } from "framer-motion"
 import { useRef, useState } from "react"
 import dynamic from "next/dynamic"
 import Navbar from "@/components/layout/navbar"
 import Marquee from "@/components/ui/marquee"
+import { useRouter } from "next/navigation"
+import { getPlanConfig } from "@/lib/plans"
+import { useToast } from "@/hooks/use-toast"
+import { createClient } from "@/lib/supabase/client"
 
 const Scene3DWrapper = dynamic(() => import("@/components/3d/Scene3DWrapper"), { ssr: false })
 const NewsGlobe = dynamic(() => import("@/components/3d/NewsGlobe"), { ssr: false })
@@ -138,12 +142,158 @@ const itemVariants: Variants = {
   },
 }
 
+const plans = [
+  {
+    name: "Free",
+    tagline: "Pour découvrir",
+    price: "0",
+    period: "Gratuit",
+    description: "Testez NewsFlow gratuitement",
+    features: [
+      "2 Flows par semaine",
+      "2 projets actifs maximum",
+      "Accès Dashboard web",
+      "Lecture en ligne uniquement",
+      "❌ Pas d'envoi par email",
+    ],
+    cta: "Commencer gratuitement",
+    href: "/signup",
+    highlighted: false,
+    planId: "free",
+    badgeText: null,
+    cardStyle: "border-white/5 bg-zinc-900/30",
+  },
+  {
+    name: "Basic",
+    tagline: "L'essentiel",
+    price: "9,90",
+    period: "par mois",
+    description: "Parfait pour rester informé",
+    features: [
+      "5 Flows par semaine",
+      "5 projets actifs maximum",
+      "Accès Dashboard web",
+      "✅ Envoi par email (PDF/HTML)",
+      "Export PDF basique",
+      "Support standard",
+    ],
+    cta: "Passer à Basic",
+    href: "/signup?plan=basic",
+    highlighted: true,
+    planId: "basic",
+    badgeText: "Populaire",
+    cardStyle: "border-cyan-500/30 bg-cyan-500/5",
+  },
+  {
+    name: "Pro",
+    tagline: "Power User",
+    price: "16,90",
+    period: "par mois",
+    description: "Pour les utilisateurs exigeants",
+    features: [
+      "15 Flows par semaine",
+      "15 projets actifs maximum",
+      "Accès Dashboard web",
+      "✅ Envoi par email (PDF/HTML)",
+      "🚀 Modèles IA avancés (Deep Search)",
+      "Export PDF illimité",
+      "🎯 Support prioritaire",
+      "Génération multiple par jour",
+    ],
+    cta: "Passer à Pro",
+    href: "/signup?plan=pro",
+    highlighted: false,
+    planId: "pro",
+    badgeText: "Best Value",
+    cardStyle: "border-amber-500/40 bg-gradient-to-br from-amber-500/10 to-purple-500/10",
+  },
+]
+
 export default function LandingPage() {
   const containerRef = useRef<HTMLDivElement>(null)
+  const router = useRouter()
+  const { toast } = useToast()
+  const supabase = createClient()
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"],
   })
+
+  // Gérer le checkout Stripe
+  const handleCheckout = async (priceId: string, planId?: string) => {
+    try {
+      if (planId) {
+        setLoadingPlan(planId)
+      }
+
+      // Vérifier l'authentification
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        // Rediriger vers login avec un paramètre pour revenir après
+        toast({
+          title: "Connexion requise",
+          description: "Veuillez vous connecter pour souscrire à un abonnement.",
+        })
+        router.push(`/login?redirect=/`)
+        if (planId) {
+          setLoadingPlan(null)
+        }
+        return
+      }
+
+      if (!priceId || priceId.startsWith("price_PLACEHOLDER")) {
+        toast({
+          title: "Configuration manquante",
+          description: "Le prix Stripe n'est pas configuré pour ce plan. Contactez le support.",
+          variant: "destructive",
+        })
+        if (planId) {
+          setLoadingPlan(null)
+        }
+        return
+      }
+
+      // Appeler l'API pour créer la session Stripe
+      const response = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ priceId }),
+      })
+
+      const data = await response.json()
+
+      if (data.url) {
+        // Rediriger vers Stripe Checkout
+        window.location.href = data.url
+      } else {
+        console.error("Erreur:", data.error)
+        toast({
+          title: "Erreur",
+          description: "Erreur lors de la redirection Stripe",
+          variant: "destructive",
+        })
+        if (planId) {
+          setLoadingPlan(null)
+        }
+      }
+    } catch (error) {
+      console.error("Erreur fetch:", error)
+      toast({
+        title: "Erreur",
+        description: "Impossible de créer la session de paiement",
+        variant: "destructive",
+      })
+      if (planId) {
+        setLoadingPlan(null)
+      }
+    }
+  }
 
   return (
     <div ref={containerRef} className="relative min-h-screen bg-zinc-950 text-white overflow-hidden">
@@ -400,9 +550,9 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* PRICING SIMPLE */}
+        {/* PRICING - Style de la page Tarif */}
         <section className="relative py-32 px-4 border-t border-white/5">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-7xl mx-auto">
             <motion.div
               initial="hidden"
               whileInView="visible"
@@ -421,102 +571,111 @@ export default function LandingPage() {
               whileInView="visible"
               viewport={{ once: true, amount: 0.1 }}
               variants={staggerContainer}
-              className="grid md:grid-cols-3 gap-4"
+              className="grid md:grid-cols-3 gap-8 items-center"
             >
-              {/* Free */}
-              <motion.div variants={itemVariants}>
-                <MinimalCard className="p-6">
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-1">Free</h3>
-                      <p className="text-3xl font-bold text-white">0€</p>
-                    </div>
-                    <ul className="space-y-2 text-sm text-zinc-500">
-                      <li className="flex items-center gap-2">
-                        <Check className="h-4 w-4 text-zinc-600" />1 projet
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="h-4 w-4 text-zinc-600" />7 Flows/semaine
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="h-4 w-4 text-zinc-600" />
-                        Email quotidien
-                      </li>
-                    </ul>
-                    <Button variant="outline" className="w-full border-white/10 hover:bg-white/5 text-white rounded-lg">
-                      Essayer
-                    </Button>
-                  </div>
-                </MinimalCard>
-              </motion.div>
-
-              {/* Pro */}
-              <motion.div variants={itemVariants}>
-                <MinimalCard className="p-6 border-white/20">
-                  <div className="space-y-4">
-                    <div>
-                      <div className="inline-block px-2 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs text-indigo-400 mb-2">
-                        Recommandé
+              {plans.map((plan, index) => (
+                <motion.div
+                  key={plan.name}
+                  variants={itemVariants}
+                  className={`relative group ${plan.highlighted ? "md:scale-105" : ""}`}
+                >
+                  {/* Carte */}
+                  <div
+                    className={`relative h-full rounded-3xl p-8 backdrop-blur-xl border ${plan.cardStyle} transition-all duration-500 hover:border-white/20`}
+                  >
+                    {/* Badge dynamique */}
+                    {plan.badgeText && (
+                      <div className={`absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-white text-sm font-medium ${
+                        plan.planId === 'basic' 
+                          ? 'bg-gradient-to-r from-cyan-500 to-blue-500' 
+                          : 'bg-gradient-to-r from-amber-500 to-orange-500'
+                      }`}>
+                        {plan.badgeText}
                       </div>
-                      <h3 className="text-lg font-semibold text-white mb-1">Pro</h3>
-                      <p className="text-3xl font-bold text-white">29€</p>
-                    </div>
-                    <ul className="space-y-2 text-sm text-zinc-400">
-                      <li className="flex items-center gap-2">
-                        <Check className="h-4 w-4 text-indigo-500" />
-                        10 projets
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="h-4 w-4 text-indigo-500" />
-                        Flows illimités
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="h-4 w-4 text-indigo-500" />
-                        Contrôle total
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="h-4 w-4 text-indigo-500" />
-                        Support 24/7
-                      </li>
-                    </ul>
-                    <div className="relative group">
-                      <div className="absolute -inset-1 bg-indigo-600 rounded-lg blur opacity-20 group-hover:opacity-40 transition-opacity duration-300" />
-                      <Button className="relative w-full bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">
-                        Commencer l'essai
-                      </Button>
-                    </div>
-                  </div>
-                </MinimalCard>
-              </motion.div>
+                    )}
 
-              {/* Trader */}
-              <motion.div variants={itemVariants}>
-                <MinimalCard className="p-6">
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-1">Trader</h3>
-                      <p className="text-3xl font-bold text-white">99€</p>
+                    {/* Glow effect pour carte Pro */}
+                    {plan.planId === 'pro' && (
+                      <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-500 via-orange-500 to-purple-500 rounded-3xl blur-xl opacity-15 group-hover:opacity-25 transition-opacity duration-500" />
+                    )}
+                    
+                    {/* Glow effect pour carte Basic */}
+                    {plan.planId === 'basic' && (
+                      <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-3xl blur-xl opacity-10 group-hover:opacity-20 transition-opacity duration-500" />
+                    )}
+
+                    {/* Contenu */}
+                    <div className="relative z-10 space-y-6">
+                      {/* Header */}
+                      <div className="space-y-2">
+                        <h3 className="text-2xl font-bold text-white">{plan.name}</h3>
+                        <p className="text-sm text-zinc-500 uppercase tracking-wider">{plan.tagline}</p>
+                      </div>
+
+                      {/* Prix */}
+                      <div className="space-y-1">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-5xl font-bold text-white">{plan.price}€</span>
+                          <span className="text-lg text-zinc-400">{plan.period}</span>
+                        </div>
+                        <p className="text-sm text-zinc-500">{plan.description}</p>
+                      </div>
+
+                      {/* Features */}
+                      <ul className="space-y-3 py-6">
+                        {plan.features.map((feature, i) => (
+                          <li key={i} className="flex items-start gap-3 text-zinc-300">
+                            <Check className="h-5 w-5 text-indigo-400 shrink-0 mt-0.5" />
+                            <span className="text-sm">{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+
+                      {/* CTA */}
+                      {plan.planId === "free" ? (
+                        <Button
+                          asChild
+                          className="w-full py-6 text-base font-semibold rounded-xl transition-all duration-300 bg-white/5 text-white hover:bg-white/10 border border-white/10"
+                        >
+                          <Link href={plan.href}>{plan.cta}</Link>
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => {
+                            const planConfig = getPlanConfig(plan.planId)
+                            if (planConfig.stripePriceId) {
+                              handleCheckout(planConfig.stripePriceId, plan.planId)
+                            } else {
+                              toast({
+                                title: "Erreur",
+                                description: "Le prix Stripe n'est pas configuré pour ce plan.",
+                                variant: "destructive",
+                              })
+                            }
+                          }}
+                          disabled={loadingPlan !== null}
+                          className={`w-full py-6 text-base font-semibold rounded-xl transition-all duration-300 ${
+                            plan.planId === 'basic'
+                              ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:shadow-lg hover:shadow-cyan-500/50 disabled:opacity-50"
+                              : plan.planId === 'pro'
+                              ? "bg-gradient-to-r from-amber-500 via-orange-500 to-purple-500 text-white hover:shadow-lg hover:shadow-amber-500/50 disabled:opacity-50"
+                              : ""
+                          }`}
+                        >
+                          {loadingPlan === plan.planId ? (
+                            <>
+                              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                              Redirection vers Stripe...
+                            </>
+                          ) : (
+                            plan.cta
+                          )}
+                        </Button>
+                      )}
                     </div>
-                    <ul className="space-y-2 text-sm text-zinc-500">
-                      <li className="flex items-center gap-2">
-                        <Check className="h-4 w-4 text-zinc-600" />
-                        Projets illimités
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="h-4 w-4 text-zinc-600" />
-                        API Access
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="h-4 w-4 text-zinc-600" />
-                        Account Manager
-                      </li>
-                    </ul>
-                    <Button variant="outline" className="w-full border-white/10 hover:bg-white/5 text-white rounded-lg">
-                      Contacter
-                    </Button>
                   </div>
-                </MinimalCard>
-              </motion.div>
+                </motion.div>
+              ))}
             </motion.div>
           </div>
         </section>
@@ -584,17 +743,17 @@ export default function LandingPage() {
                 <h4 className="text-sm font-semibold text-white mb-4">Entreprise</h4>
                 <ul className="space-y-2 text-sm text-zinc-600">
                   <li>
-                    <Link href="#" className="hover:text-white transition-colors">
+                    <Link href="/about" className="hover:text-white transition-colors">
                       À propos
                     </Link>
                   </li>
                   <li>
-                    <Link href="#" className="hover:text-white transition-colors">
+                    <Link href="/blog" className="hover:text-white transition-colors">
                       Blog
                     </Link>
                   </li>
                   <li>
-                    <Link href="#" className="hover:text-white transition-colors">
+                    <Link href="/contact" className="hover:text-white transition-colors">
                       Contact
                     </Link>
                   </li>
@@ -604,18 +763,18 @@ export default function LandingPage() {
                 <h4 className="text-sm font-semibold text-white mb-4">Ressources</h4>
                 <ul className="space-y-2 text-sm text-zinc-600">
                   <li>
-                    <Link href="#" className="hover:text-white transition-colors">
+                    <Link href="/docs" className="hover:text-white transition-colors">
                       Documentation
                     </Link>
                   </li>
                   <li>
-                    <Link href="#" className="hover:text-white transition-colors">
+                    <Link href="/api" className="hover:text-white transition-colors">
                       API
                     </Link>
                   </li>
                   <li>
-                    <Link href="#" className="hover:text-white transition-colors">
-                      Support
+                    <Link href="/roadmap" className="hover:text-white transition-colors">
+                      Roadmap
                     </Link>
                   </li>
                 </ul>
@@ -624,17 +783,17 @@ export default function LandingPage() {
                 <h4 className="text-sm font-semibold text-white mb-4">Légal</h4>
                 <ul className="space-y-2 text-sm text-zinc-600">
                   <li>
-                    <Link href="#" className="hover:text-white transition-colors">
+                    <Link href="/legal/privacy" className="hover:text-white transition-colors">
                       Confidentialité
                     </Link>
                   </li>
                   <li>
-                    <Link href="#" className="hover:text-white transition-colors">
+                    <Link href="/legal/terms" className="hover:text-white transition-colors">
                       CGU
                     </Link>
                   </li>
                   <li>
-                    <Link href="#" className="hover:text-white transition-colors">
+                    <Link href="/legal/cookies" className="hover:text-white transition-colors">
                       Cookies
                     </Link>
                   </li>
@@ -642,16 +801,7 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="border-t border-white/5 pt-8 text-center text-sm text-zinc-600">
-              <div className="flex items-center justify-center gap-4">
-                <span>© 2025 NewsFlow. Tous droits réservés.</span>
-                <span className="text-zinc-800">•</span>
-                <Link 
-                  href="/redeem" 
-                  className="text-zinc-700 hover:text-zinc-400 transition-colors text-xs"
-                >
-                  J'ai un code d'accès
-                </Link>
-              </div>
+              <span>© 2026 NewsFlow. Tous droits réservés.</span>
             </div>
           </div>
         </footer>

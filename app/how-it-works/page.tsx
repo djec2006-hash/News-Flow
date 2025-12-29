@@ -553,17 +553,17 @@ export default function HowItWorksPage() {
                 <h4 className="mb-4 font-semibold text-white">Entreprise</h4>
                 <ul className="space-y-2 text-sm text-zinc-400">
                   <li>
-                    <Link href="#" className="hover:text-white transition-colors">
+                    <Link href="/about" className="hover:text-white transition-colors">
                       À propos
                     </Link>
                   </li>
                   <li>
-                    <Link href="#" className="hover:text-white transition-colors">
+                    <Link href="/blog" className="hover:text-white transition-colors">
                       Blog
                     </Link>
                   </li>
                   <li>
-                    <Link href="#" className="hover:text-white transition-colors">
+                    <Link href="/contact" className="hover:text-white transition-colors">
                       Contact
                     </Link>
                   </li>
@@ -573,17 +573,17 @@ export default function HowItWorksPage() {
                 <h4 className="mb-4 font-semibold text-white">Légal</h4>
                 <ul className="space-y-2 text-sm text-zinc-400">
                   <li>
-                    <Link href="#" className="hover:text-white transition-colors">
+                    <Link href="/legal/privacy" className="hover:text-white transition-colors">
                       Confidentialité
                     </Link>
                   </li>
                   <li>
-                    <Link href="#" className="hover:text-white transition-colors">
+                    <Link href="/legal/terms" className="hover:text-white transition-colors">
                       CGU
                     </Link>
                   </li>
                   <li>
-                    <Link href="#" className="hover:text-white transition-colors">
+                    <Link href="/legal/cookies" className="hover:text-white transition-colors">
                       Cookies
                     </Link>
                   </li>

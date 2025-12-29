@@ -7,3 +7,4 @@ ADD COLUMN IF NOT EXISTS refresh_rate INTEGER DEFAULT 60 CHECK (refresh_rate IN 
 COMMENT ON COLUMN public.live_feed_settings.refresh_rate IS 'Rythme de rafraîchissement en secondes: 10 (Temps réel), 30 (Intensif), 60 (Normal), 120 (Mode Zen)';
 
 
+

@@ -83,7 +83,7 @@ export default function HistoryPage() {
       if (!parsed?.sections || !Array.isArray(parsed.sections)) {
         // Fallback : ancien comportement si jamais pas de sections
         return (
-          <div className="text-zinc-100 text-base md:text-lg leading-relaxed whitespace-pre-wrap font-normal">
+          <div className="text-zinc-100 text-lg md:text-xl leading-relaxed whitespace-pre-wrap font-normal">
             {recap.body}
           </div>
         )
@@ -118,12 +118,12 @@ export default function HistoryPage() {
 
           {parsed.sections.map((section: any, idx: number) => {
             return (
-              <section key={idx} className="space-y-4">
+              <section key={idx} className="space-y-6">
                 {/* Titre de section : style High Contrast avec soulignement */}
-                <h3 className="text-3xl font-bold text-white mt-8 mb-4 underline decoration-indigo-500 decoration-2 underline-offset-8">
+                <h3 className="text-3xl md:text-4xl font-bold text-white mt-8 mb-6 underline decoration-indigo-500 decoration-2 underline-offset-8">
                   {section.title}
                 </h3>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <MarkdownRenderer content={section.content || ""} />
                 </div>
               </section>
@@ -138,7 +138,7 @@ export default function HistoryPage() {
       console.error("[v0] Failed to parse source_json in history:", e)
       // Fallback si jamais le JSON est cassé
         return (
-          <div className="text-zinc-100 text-base md:text-lg leading-relaxed whitespace-pre-wrap font-normal">
+          <div className="text-zinc-100 text-lg md:text-xl leading-relaxed whitespace-pre-wrap font-normal">
             {recap.body}
           </div>
         )
@@ -314,8 +314,9 @@ export default function HistoryPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent 
           className="
-            w-[95vw] max-w-5xl 
-            max-h-[85vh] 
+            w-[95vw] max-w-7xl 
+            max-h-[90vh] 
+            min-h-[60vh]
             overflow-hidden
             bg-zinc-900/95 backdrop-blur-xl 
             border border-white/10
@@ -324,7 +325,7 @@ export default function HistoryPage() {
           "
         >
           {selectedRecap && (
-            <div className="flex flex-col h-full max-h-[85vh]">
+            <div className="flex flex-col h-full max-h-[90vh]">
               {/* Header fixe */}
               <div className="flex-shrink-0 p-6 md:p-8 border-b border-white/10 bg-zinc-900/80 backdrop-blur-sm">
                 <DialogHeader>
@@ -357,7 +358,7 @@ export default function HistoryPage() {
                       </div>
                       
                       {/* Titre principal */}
-                      <DialogTitle className="text-2xl md:text-3xl lg:text-4xl text-white font-bold leading-tight pr-4">
+                      <DialogTitle className="text-3xl md:text-4xl lg:text-5xl text-white font-bold leading-tight pr-4">
                         {selectedRecap.summary || "Flow"}
                       </DialogTitle>
                       
@@ -404,22 +405,22 @@ export default function HistoryPage() {
 
               {/* Contenu scrollable */}
               <div className="flex-1 overflow-y-auto overscroll-contain">
-                <div className="p-6 md:p-8 lg:p-10 space-y-8">
+                <div className="p-6 md:p-8 lg:p-12 space-y-8">
                   {/* Corps du Flow */}
                   {selectedRecap.body && (
-                    <div className="max-w-4xl mx-auto">
+                    <div className="max-w-5xl mx-auto">
                       {renderFlowBody(selectedRecap)}
                     </div>
                   )}
 
                   {/* Événements clés */}
                   {selectedRecap.key_events && (
-                    <div className="max-w-4xl mx-auto pt-6 border-t border-white/5">
-                      <h3 className="font-bold text-xl text-white mb-4 flex items-center gap-2">
+                    <div className="max-w-5xl mx-auto pt-6 border-t border-white/5">
+                      <h3 className="font-bold text-2xl text-white mb-4 flex items-center gap-2">
                         <span className="text-indigo-400">📌</span>
                         Événements clés
                       </h3>
-                      <div className="text-zinc-200 text-base leading-relaxed whitespace-pre-wrap">
+                      <div className="text-zinc-200 text-lg leading-relaxed whitespace-pre-wrap">
                         {selectedRecap.key_events}
                       </div>
                     </div>
@@ -427,8 +428,8 @@ export default function HistoryPage() {
 
                   {/* Canaux */}
                   {selectedRecap.channels && selectedRecap.channels.length > 0 && (
-                    <div className="max-w-4xl mx-auto pt-6 border-t border-white/5">
-                      <h3 className="font-semibold text-sm text-zinc-400 mb-3 uppercase tracking-wider">
+                    <div className="max-w-5xl mx-auto pt-6 border-t border-white/5">
+                      <h3 className="font-semibold text-base text-zinc-400 mb-3 uppercase tracking-wider">
                         Canaux de diffusion
                       </h3>
                       <div className="flex gap-2 flex-wrap">
@@ -446,7 +447,7 @@ export default function HistoryPage() {
                   )}
 
                   {/* Footer avec métadonnées */}
-                  <div className="max-w-4xl mx-auto pt-8 border-t border-white/5">
+                  <div className="max-w-5xl mx-auto pt-8 border-t border-white/5">
                     <div className="flex items-center justify-between text-xs text-zinc-500">
                       <span>
                         Flow ID: <code className="text-zinc-600">{selectedRecap.id.slice(0, 8)}...</code>

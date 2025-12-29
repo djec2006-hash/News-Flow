@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Sparkles, Shield, Zap, Layers, Globe2, Filter, Clock, BookOpen, Brain } from "lucide-react"
 import Navbar from "@/components/layout/navbar"
 import dynamic from "next/dynamic"
+import SubtleGradientMesh from "@/components/ui/subtle-gradient-mesh"
 
 // Import des composants 3D avec chargement dynamique (SSR désactivé pour Three.js)
 const Scene3DWrapper = dynamic(() => import("@/components/3d/Scene3DWrapper"), { ssr: false })
@@ -144,8 +145,8 @@ export default function FeaturesPage() {
   return (
     <div className="relative min-h-screen bg-zinc-950 text-white">
       <Navbar />
-      {/* Spot lumineux subtil réduit pour cohérence */}
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.03),_transparent_60%)]" />
+      {/* Animation d'arrière-plan subtile et haut de gamme */}
+      <SubtleGradientMesh />
       <div className="mx-auto flex max-w-6xl flex-col gap-24 px-6 pb-32 pt-24 lg:px-12">
         <motion.section
           initial="hidden"

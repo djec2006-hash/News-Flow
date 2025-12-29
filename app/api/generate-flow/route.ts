@@ -316,14 +316,66 @@ ${extraInstructions ? `\n🔥 CONSIGNE PRIORITAIRE : "${extraInstructions}"\n` :
 ${webContext || "⚠️ AUCUNE SOURCE RÉCENTE DISPONIBLE - Si vraiment pas de news fraîche, écris 'R.A.S' mais essaie d'élargir à 72h avant d'abandonner."}
 
 === FORMAT DE RÉPONSE (JSON STRICT) ===
+// NOUVEAU CODE: Génération de HTML structuré au lieu de Markdown simple
+// ANCIEN CODE: Le format était du Markdown avec des paragraphes séparés par \n\n
+// Si besoin de revenir en arrière, remplacer "HTML pur" par "Paragraphes fluides (3-5 phrases par paragraphe). Sépare les paragraphes par \\n\\n."
+
 Réponds UNIQUEMENT avec ce JSON :
 {
   "title": "${project.title}",
-  "content": "Ton analyse complète ici. Paragraphes fluides (3-5 phrases par paragraphe). Sépare les paragraphes par \\n\\n.",
+  "content": "Ton analyse en HTML pur (sans balises <html>/<body>). Structure selon la longueur demandée ci-dessous.",
   "sources": [
     { "name": "Nom de la source", "type": "media", "note": "Info pertinente" }
   ]
 }
+
+=== STRUCTURE HTML SELON LONGUEUR ===
+${lengthLevel === "very_short" || lengthLevel === "short" ? `
+**FORMAT COURT** - Structure HTML requise :
+<h2>Synthèse</h2>
+<p>1 paragraphe introductif (3-5 phrases) qui résume l'essentiel.</p>
+<h3>Points Clés</h3>
+<ul>
+  <li>Point clé 1</li>
+  <li>Point clé 2</li>
+  <li>Point clé 3</li>
+</ul>
+<h3>Action</h3>
+<p>1 paragraphe de conclusion ou recommandation.</p>
+` : lengthLevel === "standard" ? `
+**FORMAT STANDARD** - Structure HTML requise :
+<h2>Contexte</h2>
+<p>Premier paragraphe de contexte (4-6 phrases).</p>
+<p>Deuxième paragraphe développant le contexte (4-6 phrases).</p>
+<h2>Analyse Chiffrée</h2>
+<ul>
+  <li><strong>Élément 1</strong> : Détails et chiffres précis</li>
+  <li><strong>Élément 2</strong> : Détails et chiffres précis</li>
+  <li><strong>Élément 3</strong> : Détails et chiffres précis</li>
+  <li><strong>Élément 4</strong> : Détails et chiffres précis</li>
+  <li><strong>Élément 5</strong> : Détails et chiffres précis</li>
+</ul>
+<h2>Impact Stratégique</h2>
+<p>Paragraphe sur les conséquences et perspectives (4-6 phrases).</p>
+` : `
+**FORMAT TRÈS DÉTAILLÉ** - Structure HTML requise :
+<h2>Contexte</h2>
+<p>Premier paragraphe de contexte approfondi (5-7 phrases).</p>
+<p>Deuxième paragraphe développant le contexte (5-7 phrases).</p>
+<h2>Analyse Chiffrée</h2>
+<ul>
+  <li><strong>Élément 1</strong> : Analyse détaillée avec vocabulaire technique (Forex, Taux, Liquidité)</li>
+  <li><strong>Élément 2</strong> : Analyse détaillée avec vocabulaire technique</li>
+  <li><strong>Élément 3</strong> : Analyse détaillée avec vocabulaire technique</li>
+  <li><strong>Élément 4</strong> : Analyse détaillée avec vocabulaire technique</li>
+  <li><strong>Élément 5</strong> : Analyse détaillée avec vocabulaire technique</li>
+</ul>
+<h2>Impact Stratégique</h2>
+<p>Paragraphe sur les conséquences et perspectives (5-7 phrases).</p>
+<blockquote>Note d'analyste : Perspective experte sur les implications à moyen terme.</blockquote>
+`}
+
+🚫 RÈGLE ABSOLUE : JAMAIS de balise <img src="..."> dans le contenu. Interdit formellement.
 
 === STYLE BLOOMBERG TERMINAL (MISE EN FORME) ===
 
@@ -356,22 +408,14 @@ Réponds UNIQUEMENT avec ce JSON :
    - **Gaza** : Cessez-le-feu proposé par l'Égypte (hier soir)
    - **Bruxelles** : Sommet UE sur l'IA (ce matin)
 
-5. **MARKDOWN MILITANT** :
-   - **GRAS** : Tous les actifs, toutes les entreprises, tous les chiffres clés
-   - Listes à puces dès que 2+ éléments à énumérer
-   - Double saut de ligne (\\n\\n) entre chaque bloc d'info
+5. **HTML STRUCTURÉ** :
+   - Utilise <strong> pour mettre en gras les actifs, entreprises, chiffres clés
+   - Utilise <ul> et <li> pour les listes à puces
+   - Utilise <h2> et <h3> pour les titres de sections
+   - Utilise <p> pour les paragraphes
+   - Utilise <blockquote> uniquement pour les notes d'analyste (format Expert)
 
-6. **SOUS-TITRES POUR DENSIFIER (CRUCIAL POUR FORMATS LONGS)** :
-   Pour les formats Standard et Very Detailed, utilise des sous-titres en gras DANS les paragraphes pour structurer visuellement :
-   - **Analyse** : [développement]
-   - **Contexte** : [explication]
-   - **Impact** : [conséquences]
-   - **Perspectives** : [projections]
-   
-   Cela densifie la lecture sans faire de murs de texte indigestes.
-   Exemple : "La **Fed** maintient ses taux à **5,25%**.\\n\\n**Contexte** : Cette décision fait suite à...\\n\\n**Impact** : Les marchés obligataires réagissent..."
-
-7. **STRUCTURE TYPE DÉPÊCHE** :
+6. **STRUCTURE TYPE DÉPÊCHE** :
    a) Hook factuel (prix/mouvement principal)
    b) Liste des prix actuels si pertinent
    c) Causes identifiées (liste à puces avec sous-titres si détaillé)
@@ -417,7 +461,7 @@ Mouvements clés :
       messages: [
         {
           role: "system",
-          content: "Tu es un journaliste financier Bloomberg Terminal. Réponds STRICTEMENT en JSON valide. FAITS BRUTS uniquement, zéro créativité.",
+          content: "Tu es un journaliste financier Bloomberg Terminal. Réponds STRICTEMENT en JSON valide avec du HTML pur dans le champ 'content'. FAITS BRUTS uniquement, zéro créativité. JAMAIS de balise <img>.",
         },
         {
           role: "user",
@@ -442,11 +486,20 @@ Mouvements clés :
 
     const parsedJson = JSON.parse(cleaned)
 
-    console.log(`[NewsFlow] ✅ Agent completed project: "${project.title}" (${parsedJson.content?.split(" ").length || 0} words)`)
+    // 🚫 NETTOYAGE SÉCURITAIRE : Supprime toute balise <img> qui pourrait être générée par erreur
+    let cleanedContent = parsedJson.content || ""
+    if (cleanedContent) {
+      // Supprime toutes les balises <img> et leurs attributs
+      cleanedContent = cleanedContent.replace(/<img[^>]*>/gi, "")
+      // Supprime aussi les balises <img> auto-fermantes
+      cleanedContent = cleanedContent.replace(/<img[^>]*\/>/gi, "")
+    }
+
+    console.log(`[NewsFlow] ✅ Agent completed project: "${project.title}" (${cleanedContent.split(" ").length || 0} words)`)
 
     return {
       title: parsedJson.title || project.title,
-      content: parsedJson.content || "",
+      content: cleanedContent,
       sources: parsedJson.sources || [],
     }
   } catch (error) {

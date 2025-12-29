@@ -38,19 +38,94 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 })
     }
 
-    // Récupération du prix
+    // Récupération du prix et du coupon
     const body = await request.json()
-    const { priceId } = body
+    const { priceId, couponId } = body
 
     if (!priceId) {
       return NextResponse.json({ error: "Price ID manquant" }, { status: 400 })
     }
 
-    // Création de la session
-    const session = await stripe.checkout.sessions.create({
+    // Récupérer le prix pour vérifier si on peut appliquer une réduction
+    const price = await stripe.prices.retrieve(priceId)
+    const originalAmount = price.unit_amount || 0
+
+    // Si un coupon est fourni, vérifier qu'il est valide et calculer le montant final
+    let finalAmount = originalAmount
+    let discounts: Array<{ coupon: string }> | undefined = undefined
+
+    if (couponId) {
+      try {
+        const coupon = await stripe.coupons.retrieve(couponId)
+        
+        // Calculer le montant final après réduction
+        if (coupon.percent_off) {
+          finalAmount = Math.round(originalAmount * (1 - coupon.percent_off / 100))
+        } else if (coupon.amount_off) {
+          finalAmount = Math.max(0, originalAmount - coupon.amount_off)
+        }
+
+        // Ajouter le coupon aux discounts
+        discounts = [{ coupon: couponId }]
+      } catch (couponError) {
+        console.error("Erreur lors de la récupération du coupon:", couponError)
+        // Continuer sans coupon si erreur
+      }
+    }
+
+    // Si le montant final est 0€, créer directement l'abonnement sans checkout
+    if (finalAmount === 0 && couponId) {
+      try {
+        // Récupérer ou créer le customer Stripe
+        let customerId: string | null = null
+        
+        // Chercher le customer existant
+        const customers = await stripe.customers.list({
+          email: user.email || undefined,
+          limit: 1,
+        })
+
+        if (customers.data.length > 0) {
+          customerId = customers.data[0].id
+        } else {
+          // Créer un nouveau customer
+          const customer = await stripe.customers.create({
+            email: user.email || undefined,
+            metadata: {
+              userId: user.id,
+            },
+          })
+          customerId = customer.id
+        }
+
+        // Créer l'abonnement directement avec le coupon
+        const subscription = await stripe.subscriptions.create({
+          customer: customerId,
+          items: [{ price: priceId }],
+          coupon: couponId,
+          metadata: {
+            userId: user.id,
+          },
+        })
+
+        // Rediriger vers le dashboard avec succès
+        return NextResponse.json({
+          url: `${request.headers.get("origin")}/dashboard?payment=success&subscription=${subscription.id}`,
+        })
+      } catch (subscriptionError: any) {
+        console.error("Erreur lors de la création de l'abonnement gratuit:", subscriptionError)
+        return NextResponse.json(
+          { error: subscriptionError.message || "Erreur lors de la création de l'abonnement" },
+          { status: 500 }
+        )
+      }
+    }
+
+    // Configuration de base de la session pour les paiements normaux
+    const sessionConfig: Stripe.Checkout.SessionCreateParams = {
       mode: "subscription",
       payment_method_types: ["card"],
-      allow_promotion_codes: true,
+      allow_promotion_codes: !couponId, // Permettre les codes promo seulement si pas de coupon déjà appliqué
       line_items: [
         {
           price: priceId,
@@ -63,7 +138,15 @@ export async function POST(request: Request) {
       metadata: {
         userId: user.id,
       },
-    })
+    }
+
+    // Ajouter le coupon si fourni
+    if (discounts) {
+      sessionConfig.discounts = discounts
+    }
+
+    // Création de la session
+    const session = await stripe.checkout.sessions.create(sessionConfig)
 
     return NextResponse.json({ url: session.url })
 

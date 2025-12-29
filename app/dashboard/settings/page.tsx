@@ -21,6 +21,7 @@ import { motion } from "framer-motion"
 import { getPlanConfig } from "@/lib/plans"
 import { useToast } from "@/hooks/use-toast"
 import { updateInterests } from "@/app/actions/update-interests"
+import { SubscriptionPanel } from "@/components/dashboard/SubscriptionPanel"
 
 const INTEREST_CATEGORIES = [
   { id: "crypto", label: "Crypto & Web3", icon: "₿", color: "border-orange-500/50 bg-orange-500/10 text-orange-400" },
@@ -339,52 +340,16 @@ export default function SettingsPage() {
           </div>
         </motion.div>
 
-        {/* Carte 2 : Abonnement (1/3 largeur - Style Carte de Crédit) */}
+        {/* Carte 2 : Abonnement (1/3 largeur) */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <div className="relative overflow-hidden rounded-3xl h-full bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-900 p-8 text-white shadow-2xl shadow-indigo-500/30">
-            {/* Pattern overlay */}
-            <div className="absolute inset-0 opacity-10">
-              <div className="absolute top-0 right-0 w-40 h-40 bg-white rounded-full blur-3xl" />
-              <div className="absolute bottom-0 left-0 w-40 h-40 bg-pink-500 rounded-full blur-3xl" />
-            </div>
-
-            <div className="relative z-10 flex flex-col h-full">
-              <div className="flex items-center gap-2 mb-8">
-                <Crown className="h-5 w-5" />
-                <span className="text-sm font-medium opacity-90">Abonnement</span>
-              </div>
-
-              <div className="flex-1">
-                <div className="text-5xl font-bold mb-6">
-                  {profile?.plan_type?.toUpperCase() || "FREE"}
-                </div>
-                
-                {planConfig && (
-                  <div className="space-y-3 text-sm opacity-90">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="h-4 w-4" />
-                      <span>{planConfig.maxRecapsPerWeek} Flows / semaine</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="h-4 w-4" />
-                      <span>{planConfig.pricePerMonth}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <Button
-                variant="secondary"
-                className="w-full bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white border-0 mt-6"
-              >
-                Gérer mon abonnement
-              </Button>
-            </div>
-          </div>
+          <SubscriptionPanel 
+            initialPlanType={profile?.plan_type || "free"}
+            initialStatus="active"
+          />
         </motion.div>
 
         {/* Carte 3 : Préférences de Contenu (Compacte) */}

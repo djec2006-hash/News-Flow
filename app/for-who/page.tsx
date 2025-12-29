@@ -1,19 +1,12 @@
 "use client"
 
-import { useRef } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { motion, useScroll, useTransform, useSpring, useVelocity, type Variants } from "framer-motion"
+import { motion, type Variants } from "framer-motion"
 import Navbar from "@/components/layout/navbar"
-import dynamic from "next/dynamic"
+import { Radar, Zap, Network, Check } from "lucide-react"
 
-const Scene3DWrapper = dynamic(() => import("@/components/3d/Scene3DWrapper"), { ssr: false })
-const TheNexus = dynamic(() => import("@/components/3d/TheNexus"), { ssr: false })
-const ChaosToOrder = dynamic(() => import("@/components/3d/ChaosToOrder"), { ssr: false })
-const MorphingCompass = dynamic(() => import("@/components/3d/MorphingCompass"), { ssr: false })
-const TheUntangling = dynamic(() => import("@/components/3d/TheUntangling"), { ssr: false })
-
-// Variants pour animations
+// Variants pour animations scroll reveal
 const fadeInUp: Variants = {
   hidden: { opacity: 0, y: 60 },
   visible: {
@@ -23,302 +16,353 @@ const fadeInUp: Variants = {
   },
 }
 
-const staggerContainer: Variants = {
-  hidden: { opacity: 0 },
+const fadeInLeft: Variants = {
+  hidden: { opacity: 0, x: -60 },
   visible: {
     opacity: 1,
-    transition: {
-      staggerChildren: 0.15,
-      delayChildren: 0.2,
-    },
+    x: 0,
+    transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] },
   },
 }
 
-export default function ForWhoPage() {
-  // Refs pour sections
-  const section2Ref = useRef<HTMLElement>(null)
-  const section3Ref = useRef<HTMLElement>(null)
-  const section4Ref = useRef<HTMLElement>(null)
+const fadeInRight: Variants = {
+  hidden: { opacity: 0, x: 60 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] },
+  },
+}
 
-  // Scroll progress pour chaque section
-  const { scrollYProgress: scroll2 } = useScroll({
-    target: section2Ref,
-    offset: ["start end", "end start"],
-  })
-
-  const { scrollYProgress: scroll3 } = useScroll({
-    target: section3Ref,
-    offset: ["start end", "end start"],
-  })
-
-  const { scrollYProgress: scroll4 } = useScroll({
-    target: section4Ref,
-    offset: ["start end", "end end"],
-  })
-
-  // Velocity pour section 3
-  const scrollYVelocity = useVelocity(scroll3)
-  const smoothVelocity = useSpring(scrollYVelocity, { damping: 50, stiffness: 400 })
-
-  // Transform scroll progress (0-1) pour animations
-  const chaos2OrderProgress = useTransform(scroll2, [0.2, 0.8], [0, 1])
-  const untanglingProgress = useTransform(scroll4, [0.1, 0.9], [0, 1])
-
+// Composant Carte Holographique
+function HolographicCard({
+  children,
+  gradientFrom,
+  gradientTo,
+  glowColor,
+  className = "",
+}: {
+  children: React.ReactNode
+  gradientFrom: string
+  gradientTo: string
+  glowColor: string
+  className?: string
+}) {
   return (
-    <div className="min-h-screen bg-zinc-950 text-white relative overflow-hidden">
-      {/* Texture de bruit subtile */}
+    <div className={`relative group ${className}`}>
+      {/* Halo de fond coloré */}
       <div
-        className="fixed inset-0 opacity-[0.015] pointer-events-none"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='3' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-        }}
+        className={`absolute inset-0 ${glowColor} blur-3xl opacity-30 group-hover:opacity-50 transition-opacity duration-500`}
       />
 
+      {/* Carte holographique */}
+      <div className="relative rounded-2xl bg-zinc-900/60 backdrop-blur-xl border border-white/10 p-8 h-full">
+        {/* Bordure dégradée avec wrapper */}
+        <div
+          className={`absolute -inset-[1px] rounded-2xl bg-gradient-to-r ${gradientFrom} ${gradientTo} opacity-20 group-hover:opacity-40 transition-opacity duration-500 -z-10`}
+        />
+
+        {/* Glow au survol */}
+        <div
+          className={`absolute -inset-1 rounded-2xl ${glowColor} blur-2xl opacity-0 group-hover:opacity-30 transition-opacity duration-500 -z-10`}
+        />
+
+        {/* Contenu */}
+        <div className="relative z-10">{children}</div>
+      </div>
+    </div>
+  )
+}
+
+// Composant Visuel Abstrait
+function AbstractVisual({
+  gradientFrom,
+  gradientTo,
+  icon: Icon,
+  className = "",
+}: {
+  gradientFrom: string
+  gradientTo: string
+  icon: React.ComponentType<{ className?: string }>
+  className?: string
+}) {
+  return (
+    <div className={`relative ${className}`}>
+      {/* Halo coloré en arrière-plan */}
+      <div
+        className={`absolute inset-0 ${gradientFrom.includes("cyan") ? "bg-cyan-500/20" : gradientFrom.includes("purple") ? "bg-purple-500/20" : "bg-amber-500/20"} blur-3xl rounded-full`}
+      />
+
+      {/* Carte holographique avec visuel */}
+      <HolographicCard
+        gradientFrom={gradientFrom}
+        gradientTo={gradientTo}
+        glowColor={gradientFrom.includes("cyan") ? "bg-cyan-500" : gradientFrom.includes("purple") ? "bg-purple-500" : "bg-amber-500"}
+        className="h-full min-h-[400px]"
+      >
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center space-y-6">
+            <div className={`inline-flex p-6 rounded-2xl bg-gradient-to-br ${gradientFrom} ${gradientTo} opacity-20`}>
+              <Icon className="h-16 w-16 text-white" />
+            </div>
+            <div className="space-y-2">
+              <div className={`h-2 w-32 mx-auto rounded-full bg-gradient-to-r ${gradientFrom} ${gradientTo} opacity-30`} />
+              <div className={`h-2 w-24 mx-auto rounded-full bg-gradient-to-r ${gradientFrom} ${gradientTo} opacity-20`} />
+            </div>
+          </div>
+        </div>
+      </HolographicCard>
+    </div>
+  )
+}
+
+export default function ForWhoPage() {
+  return (
+    <div className="min-h-screen bg-black text-white">
       <Navbar />
 
-      {/* SECTION 1 : HERO - L'UNIVERSALITÉ */}
-      <section className="relative pt-32 pb-24 px-6">
-        <div className="max-w-6xl mx-auto">
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={staggerContainer}
-            className="text-center space-y-8 mb-16"
-          >
-            <motion.h1 variants={fadeInUp} className="text-5xl md:text-7xl font-bold text-white leading-tight">
-              Conçu pour l'expert.
-              <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">
-                Accessible à tous.
-              </span>
-            </motion.h1>
-            <motion.p variants={fadeInUp} className="text-xl md:text-2xl text-zinc-400 max-w-4xl mx-auto font-light">
-              La puissance d'une salle de marché, la clarté nécessaire pour comprendre le monde dès 14 ans.
-            </motion.p>
-          </motion.div>
-
-          {/* The Nexus 3D - S'ouvre au scroll */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            className="relative h-[500px] pointer-events-none"
-          >
-            {/* Spot lumineux de fond */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl" />
-            </div>
-            <Scene3DWrapper cameraPosition={[0, 0, 3.5]}>
-              <TheNexus scrollProgress={scroll2} />
-            </Scene3DWrapper>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* SECTION 2 : L'EXPERT FINANCIER - CHAOS → ORDRE */}
-      <section ref={section2Ref} className="relative py-32 px-6 border-t border-white/5">
+      <main className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-16 items-center">
-            {/* Texte à gauche */}
-            <motion.div
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.1 }}
-              variants={staggerContainer}
-              className="space-y-6"
-            >
-              <motion.div variants={fadeInUp} className="inline-block px-4 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium">
-                Pour le Professionnel Exigeant
-              </motion.div>
-              <motion.h2 variants={fadeInUp} className="text-4xl md:text-5xl font-bold text-white">
-                Dompter le chaos
-              </motion.h2>
-              <motion.p variants={fadeInUp} className="text-xl text-zinc-400 leading-relaxed">
-                Transformez le bruit des marchés en signaux faibles exploitables avant l'ouverture. Gain de temps critique.
-              </motion.p>
-              <motion.ul variants={staggerContainer} className="space-y-4 pt-4">
-                <motion.li variants={fadeInUp} className="flex items-start gap-3 text-zinc-300">
-                  <div className="h-6 w-6 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <div className="h-2 w-2 rounded-full bg-blue-400" />
-                  </div>
-                  <span>Information avant le marché, quand ça compte</span>
-                </motion.li>
-                <motion.li variants={fadeInUp} className="flex items-start gap-3 text-zinc-300">
-                  <div className="h-6 w-6 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <div className="h-2 w-2 rounded-full bg-blue-400" />
-                  </div>
-                  <span>Détection de signaux faibles avant vos concurrents</span>
-                </motion.li>
-                <motion.li variants={fadeInUp} className="flex items-start gap-3 text-zinc-300">
-                  <div className="h-6 w-6 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <div className="h-2 w-2 rounded-full bg-blue-400" />
-                  </div>
-                  <span>Économisez 2-3 heures de veille par jour</span>
-                </motion.li>
-              </motion.ul>
-            </motion.div>
-
-            {/* Chaos → Ordre 3D à droite */}
-            <div className="relative h-[500px] pointer-events-none">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-96 h-96 bg-blue-500/15 rounded-full blur-3xl" />
-              </div>
-              <Scene3DWrapper cameraPosition={[0, 0, 4]}>
-                <ChaosToOrder scrollProgress={chaos2OrderProgress} />
-              </Scene3DWrapper>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* SECTION 3 : LE STRATÈGE - MORPHING COMPASS */}
-      <section ref={section3Ref} className="relative py-32 px-6 border-t border-white/5">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-16 items-center">
-            {/* Morphing Compass 3D à gauche */}
-            <div className="relative h-[500px] pointer-events-none order-2 md:order-1">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-96 h-96 bg-purple-500/15 rounded-full blur-3xl" />
-              </div>
-              <Scene3DWrapper cameraPosition={[0, 0, 3]}>
-                <MorphingCompass scrollProgress={scroll3} scrollVelocity={smoothVelocity} />
-              </Scene3DWrapper>
-            </div>
-
-            {/* Texte à droite */}
-            <motion.div
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.1 }}
-              variants={staggerContainer}
-              className="space-y-6 order-1 md:order-2"
-            >
-              <motion.div variants={fadeInUp} className="inline-block px-4 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-sm font-medium">
-                Pour le Visionnaire
-              </motion.div>
-              <motion.h2 variants={fadeInUp} className="text-4xl md:text-5xl font-bold text-white">
-                La vue d'ensemble
-              </motion.h2>
-              <motion.p variants={fadeInUp} className="text-xl text-zinc-400 leading-relaxed">
-                Connectez les points entre géopolitique, tech et énergie. Une veille transversale pour anticiper les shifts majeurs.
-              </motion.p>
-              <motion.ul variants={staggerContainer} className="space-y-4 pt-4">
-                <motion.li variants={fadeInUp} className="flex items-start gap-3 text-zinc-300">
-                  <div className="h-6 w-6 rounded-full bg-purple-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <div className="h-2 w-2 rounded-full bg-purple-400" />
-                  </div>
-                  <span>Vision macro sur tous les secteurs stratégiques</span>
-                </motion.li>
-                <motion.li variants={fadeInUp} className="flex items-start gap-3 text-zinc-300">
-                  <div className="h-6 w-6 rounded-full bg-purple-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <div className="h-2 w-2 rounded-full bg-purple-400" />
-                  </div>
-                  <span>Identifiez les inflexions avant qu'elles ne deviennent évidentes</span>
-                </motion.li>
-                <motion.li variants={fadeInUp} className="flex items-start gap-3 text-zinc-300">
-                  <div className="h-6 w-6 rounded-full bg-purple-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <div className="h-2 w-2 rounded-full bg-purple-400" />
-                  </div>
-                  <span>Prenez des décisions stratégiques éclairées, rapidement</span>
-                </motion.li>
-              </motion.ul>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* SECTION 4 : L'ÉTUDIANT - THE UNTANGLING (WOW FINAL) */}
-      <section ref={section4Ref} className="relative py-32 px-6 border-t border-white/5">
-        <div className="max-w-6xl mx-auto">
-          <motion.div
+          {/* Header */}
+          <motion.section
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-100px" }}
-            variants={staggerContainer}
-            className="text-center space-y-8 mb-16"
+            variants={fadeInUp}
+            className="text-center mb-32"
           >
-            <motion.div variants={fadeInUp} className="inline-block px-4 py-1 rounded-full bg-pink-500/10 border border-pink-500/20 text-pink-400 text-sm font-medium">
-              Pour le Curieux & l'Étudiant
-            </motion.div>
-            <motion.h2 variants={fadeInUp} className="text-4xl md:text-6xl font-bold text-white">
-              Si clair, même à 14 ans
-            </motion.h2>
-            <motion.p variants={fadeInUp} className="text-xl md:text-2xl text-zinc-400 max-w-3xl mx-auto font-light">
-              Notre IA ne "dumb down" pas, elle clarifie. Comprendre les vrais enjeux mondiaux sans le jargon inaccessible.
-            </motion.p>
-          </motion.div>
-
-          {/* The Untangling 3D - Le nœud se dénoue */}
-          <div className="relative h-[600px] pointer-events-none">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-[500px] h-[500px] bg-pink-500/15 rounded-full blur-3xl" />
-            </div>
-            <Scene3DWrapper cameraPosition={[0, 0, 3]}>
-              <TheUntangling scrollProgress={untanglingProgress} />
-            </Scene3DWrapper>
-          </div>
-
-          {/* Texte explicatif */}
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={staggerContainer}
-            className="text-center space-y-6 mt-16"
-          >
-            <motion.p variants={fadeInUp} className="text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed">
-              NewsFlow adapte sa complexité à votre niveau. Du collégien qui découvre l'économie au doctorant en géopolitique.
-            </motion.p>
-            <motion.p variants={fadeInUp} className="text-lg text-zinc-500 max-w-xl mx-auto italic">
-              "Scrollez pour voir le nœud se dénouer — c'est exactement ce que fait NewsFlow avec l'information."
-            </motion.p>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* CTA FINAL */}
-      <section className="relative py-24 px-6 border-t border-white/5">
-        <div className="max-w-4xl mx-auto text-center">
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={staggerContainer}
-            className="space-y-8"
-          >
-            <motion.h2 variants={fadeInUp} className="text-4xl md:text-5xl font-bold text-white">
-              Quel que soit votre profil,
-              <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">
-                NewsFlow s'adapte à vous
+            <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold mb-6 text-white">
+              <span className="bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                Une puissance adaptée à votre ambition.
               </span>
-            </motion.h2>
-            <motion.p variants={fadeInUp} className="text-xl text-zinc-400 max-w-2xl mx-auto">
-              Rejoignez des milliers de professionnels et de curieux qui ont repris le contrôle de leur veille.
-            </motion.p>
-            <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
-              <Button
-                asChild
-                size="lg"
-                className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white hover:shadow-xl hover:shadow-indigo-500/50 transition-all duration-300 px-8 py-6 text-lg rounded-xl"
-              >
-                <Link href="/signup">Commencer gratuitement</Link>
-              </Button>
-              <Button
-                asChild
-                size="lg"
-                variant="outline"
-                className="bg-white/5 border-white/10 text-white hover:bg-white/10 px-8 py-6 text-lg rounded-xl"
-              >
-                <Link href="/features">Découvrir les fonctionnalités</Link>
-              </Button>
-            </motion.div>
-            <motion.p variants={fadeInUp} className="text-sm text-zinc-500">
-              Sans carte bancaire • Personnalisation en 2 minutes
-            </motion.p>
-          </motion.div>
+            </h1>
+            <p className="text-xl sm:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
+              NewsFlow n'est pas juste un outil de veille. C'est un moteur d'intelligence qui évolue avec votre stratégie.
+            </p>
+          </motion.section>
+
+          {/* Section 1 : L'Investisseur Individuel - Texte Gauche | Visuel Droite */}
+          <motion.section
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-150px" }}
+            className="py-32 relative"
+          >
+            {/* Halo cyan en arrière-plan */}
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-cyan-500/10 blur-3xl pointer-events-none" />
+
+            <div className="grid lg:grid-cols-2 gap-16 items-center relative z-10">
+              {/* Texte à gauche */}
+              <motion.div variants={fadeInLeft} initial="hidden" whileInView="visible" viewport={{ once: true }}>
+                <div className="space-y-6">
+                  <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/30 mb-4">
+                    <Radar className="h-5 w-5 text-cyan-400" />
+                    <span className="text-sm font-medium text-cyan-400">L'Investisseur Individuel</span>
+                  </div>
+
+                  <h2 className="text-4xl sm:text-5xl font-bold text-white">
+                    <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+                      L'Investisseur Averti
+                    </span>
+                  </h2>
+
+                  <p className="text-xl text-gray-300 leading-relaxed">
+                    Comprenez le marché sans le bruit. Une synthèse claire pour démarrer sans stress.
+                  </p>
+
+                  <p className="text-lg text-gray-400 leading-relaxed">
+                    Ne subissez plus le marché. Comprenez-le. NewsFlow filtre le bruit médiatique pour ne vous livrer que les faits qui impactent votre portefeuille. Passez de la réaction émotionnelle à la décision rationnelle en quelques minutes par jour.
+                  </p>
+
+                  <div className="space-y-3 pt-4">
+                    <div className="flex items-start gap-3">
+                      <Check className="h-5 w-5 text-cyan-400 shrink-0 mt-0.5" />
+                      <span className="text-gray-300">Synthèse quotidienne</span>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Check className="h-5 w-5 text-cyan-400 shrink-0 mt-0.5" />
+                      <span className="text-gray-300">Alertes anti-bruit</span>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Check className="h-5 w-5 text-cyan-400 shrink-0 mt-0.5" />
+                      <span className="text-gray-300">Compréhension des tendances</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Visuel à droite */}
+              <motion.div variants={fadeInRight} initial="hidden" whileInView="visible" viewport={{ once: true }}>
+                <AbstractVisual
+                  gradientFrom="from-cyan-500"
+                  gradientTo="to-blue-500"
+                  icon={Radar}
+                />
+              </motion.div>
+            </div>
+          </motion.section>
+
+          {/* Section 2 : Le Trader Actif - Visuel Gauche | Texte Droite */}
+          <motion.section
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-150px" }}
+            className="py-32 relative"
+          >
+            {/* Halo violet en arrière-plan */}
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-500/10 blur-3xl pointer-events-none" />
+
+            <div className="grid lg:grid-cols-2 gap-16 items-center relative z-10">
+              {/* Visuel à gauche */}
+              <motion.div variants={fadeInLeft} initial="hidden" whileInView="visible" viewport={{ once: true }} className="lg:order-1">
+                <AbstractVisual
+                  gradientFrom="from-purple-500"
+                  gradientTo="to-pink-500"
+                  icon={Zap}
+                />
+              </motion.div>
+
+              {/* Texte à droite */}
+              <motion.div variants={fadeInRight} initial="hidden" whileInView="visible" viewport={{ once: true }} className="lg:order-2">
+                <div className="space-y-6">
+                  <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/30 mb-4">
+                    <Zap className="h-5 w-5 text-purple-400" />
+                    <span className="text-sm font-medium text-purple-400">Le Trader Actif</span>
+                  </div>
+
+                  <h2 className="text-4xl sm:text-5xl font-bold text-white">
+                    <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                      Le Trader & Analyste
+                    </span>
+                  </h2>
+
+                  <p className="text-xl text-gray-300 leading-relaxed">
+                    L'Alpha à la vitesse de la lumière. Signaux temps réel et Deep Search pour surperformer.
+                  </p>
+
+                  <p className="text-lg text-gray-400 leading-relaxed">
+                    L'information est votre alpha. Détectez les catalyseurs de marché avant qu'ils ne soient pricés. Notre mode 'Deep Search' croise les données macro, crypto et forex pour révéler des corrélations invisibles aux outils classiques.
+                  </p>
+
+                  <div className="space-y-3 pt-4">
+                    <div className="flex items-start gap-3">
+                      <Check className="h-5 w-5 text-purple-400 shrink-0 mt-0.5" />
+                      <span className="text-gray-300">Flux temps réel milliseconde</span>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Check className="h-5 w-5 text-purple-400 shrink-0 mt-0.5" />
+                      <span className="text-gray-300">Analyse de sentiment IA</span>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Check className="h-5 w-5 text-purple-400 shrink-0 mt-0.5" />
+                      <span className="text-gray-300">Détection de signaux faibles</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </motion.section>
+
+          {/* Section 3 : L'Institutionnel - Texte Gauche | Visuel Droite */}
+          <motion.section
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-150px" }}
+            className="py-32 relative"
+          >
+            {/* Halo ambre en arrière-plan */}
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-amber-500/10 blur-3xl pointer-events-none" />
+
+            <div className="grid lg:grid-cols-2 gap-16 items-center relative z-10">
+              {/* Texte à gauche */}
+              <motion.div variants={fadeInLeft} initial="hidden" whileInView="visible" viewport={{ once: true }}>
+                <div className="space-y-6">
+                  <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/30 mb-4">
+                    <Network className="h-5 w-5 text-amber-400" />
+                    <span className="text-sm font-medium text-amber-400">L'Institutionnel</span>
+                  </div>
+
+                  <h2 className="text-4xl sm:text-5xl font-bold text-white">
+                    <span className="bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
+                      Fonds & Entreprises
+                    </span>
+                  </h2>
+
+                  <p className="text-xl text-gray-300 leading-relaxed">
+                    Infrastructure globale. API, Rapports White-Label et couverture 24/7.
+                  </p>
+
+                  <p className="text-lg text-gray-400 leading-relaxed">
+                    L'infrastructure de veille ultime. Intégrez nos flux via API directement dans vos algorithmes de trading ou vos dashboards internes. Une couverture mondiale, multi-langues et 24/7 pour ne jamais laisser une opportunité géographique vous échapper.
+                  </p>
+
+                  <div className="space-y-3 pt-4">
+                    <div className="flex items-start gap-3">
+                      <Check className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+                      <span className="text-gray-300">API dédiée & Webhooks</span>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Check className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+                      <span className="text-gray-300">Rapports marque blanche</span>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Check className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+                      <span className="text-gray-300">Support prioritaire</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Visuel à droite */}
+              <motion.div variants={fadeInRight} initial="hidden" whileInView="visible" viewport={{ once: true }}>
+                <AbstractVisual
+                  gradientFrom="from-amber-400"
+                  gradientTo="to-orange-500"
+                  icon={Network}
+                />
+              </motion.div>
+            </div>
+          </motion.section>
+
+          {/* CTA Final */}
+          <motion.section
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            variants={fadeInUp}
+            className="text-center py-32"
+          >
+            <div className="rounded-2xl border border-white/10 bg-zinc-900/50 backdrop-blur-xl p-12 max-w-4xl mx-auto">
+              <h3 className="text-3xl font-bold mb-4 text-white">
+                Prêt à transformer votre veille ?
+              </h3>
+              <p className="text-gray-300 mb-8 text-lg max-w-2xl mx-auto">
+                Rejoignez des milliers d'investisseurs et de professionnels qui ont repris le contrôle de leur information.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <Button
+                  asChild
+                  size="lg"
+                  className="bg-white text-black hover:bg-gray-100 border-0 rounded-full px-8 py-6 text-lg font-medium"
+                >
+                  <Link href="/signup">Commencer gratuitement</Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
+                  className="border-gray-600 text-gray-200 hover:bg-gray-900 hover:text-white rounded-full px-8 py-6 text-lg font-medium"
+                >
+                  <Link href="/features">Découvrir les fonctionnalités</Link>
+                </Button>
+              </div>
+              <p className="text-sm text-gray-500 mt-6">
+                Sans carte bancaire • Personnalisation en 2 minutes
+              </p>
+            </div>
+          </motion.section>
         </div>
-      </section>
+      </main>
     </div>
   )
 }

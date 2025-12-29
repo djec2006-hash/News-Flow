@@ -35,6 +35,9 @@ export default function Navbar() {
           <Link href="/pricing" className="text-sm text-zinc-400 hover:text-white transition-colors">
             Tarifs
           </Link>
+          <Link href="/docs" className="text-sm text-zinc-400 hover:text-white transition-colors">
+            Documentation
+          </Link>
         </nav>
         <div className="flex items-center gap-3">
           <Button variant="ghost" asChild className="text-zinc-400 hover:text-white hover:bg-white/5">

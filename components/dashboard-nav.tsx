@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
-import { Newspaper, History, Settings, LogOut, FolderKanban, Radio, Mail, Activity } from "lucide-react"
+import { Newspaper, History, Settings, LogOut, FolderKanban, Radio, Mail, Activity, HelpCircle, Mic } from "lucide-react"
 import Logo from "@/components/ui/logo"
 
 export function DashboardNav() {
@@ -23,6 +23,8 @@ export function DashboardNav() {
     { href: "/dashboard/live-feed", label: "Live Feed", icon: Activity },
     { href: "/dashboard/email-config", label: "Emails & Alertes", icon: Mail },
     { href: "/dashboard/history", label: "Historique", icon: History },
+    { href: "/dashboard/podcast", label: "Live Podcast", icon: Mic },
+    { href: "/dashboard/help", label: "Aide & Tutos", icon: HelpCircle },
     { href: "/dashboard/settings", label: "Profil", icon: Settings },
   ]
 

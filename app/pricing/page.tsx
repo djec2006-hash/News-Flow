@@ -4,12 +4,13 @@ import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Check, ChevronDown, TrendingUp, Shield, MousePointerClick, Loader2 } from "lucide-react"
+import { Check, ChevronDown, TrendingUp, Shield, MousePointerClick, Loader2, X, CheckCircle2 } from "lucide-react"
 import { motion, type Variants } from "framer-motion"
 import Navbar from "@/components/layout/navbar"
 import { getPlanConfig } from "@/lib/plans"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
+import { validatePromoCode } from "@/app/actions/validate-promo"
 
 // Variants pour animations
 const fadeInUp: Variants = {
@@ -124,6 +125,71 @@ export default function PricingPage() {
   const supabase = createClient()
   const [openFaq, setOpenFaq] = useState<number | null>(null)
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
+  
+  // État pour le code promo
+  const [promoCode, setPromoCode] = useState("")
+  const [promoLoading, setPromoLoading] = useState(false)
+  const [appliedPromo, setAppliedPromo] = useState<{
+    code: string
+    discount: { percent_off?: number; amount_off?: number; currency?: string }
+    couponId: string
+  } | null>(null)
+  const [promoError, setPromoError] = useState("")
+
+  // Appliquer le code promo
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) {
+      setPromoError("Veuillez entrer un code promo")
+      return
+    }
+
+    setPromoLoading(true)
+    setPromoError("")
+
+    try {
+      const result = await validatePromoCode(promoCode)
+
+      if (result.valid && result.discount && result.couponId) {
+        setAppliedPromo({
+          code: promoCode.trim().toUpperCase(),
+          discount: result.discount,
+          couponId: result.couponId,
+        })
+        toast({
+          title: "Code promo appliqué",
+          description: `Réduction de ${result.discount.percent_off ? `${result.discount.percent_off}%` : `${result.discount.amount_off}${result.discount.currency || "€"}`} appliquée`,
+        })
+      } else {
+        setPromoError(result.error || "Code promo invalide ou expiré")
+        setAppliedPromo(null)
+      }
+    } catch (error: any) {
+      setPromoError(error.message || "Erreur lors de la validation du code")
+      setAppliedPromo(null)
+    } finally {
+      setPromoLoading(false)
+    }
+  }
+
+  // Retirer le code promo
+  const handleRemovePromo = () => {
+    setAppliedPromo(null)
+    setPromoCode("")
+    setPromoError("")
+  }
+
+  // Calculer le prix avec réduction
+  const calculateDiscountedPrice = (originalPrice: number): number => {
+    if (!appliedPromo?.discount) return originalPrice
+
+    if (appliedPromo.discount.percent_off) {
+      return originalPrice * (1 - appliedPromo.discount.percent_off / 100)
+    } else if (appliedPromo.discount.amount_off) {
+      return Math.max(0, originalPrice - (appliedPromo.discount.amount_off / 100))
+    }
+
+    return originalPrice
+  }
 
   // Gérer le checkout Stripe
   const handleCheckout = async (priceId: string, planId?: string) => {
@@ -168,7 +234,10 @@ export default function PricingPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ priceId }),
+        body: JSON.stringify({
+          priceId,
+          couponId: appliedPromo?.couponId,
+        }),
       })
 
       const data = await response.json()
@@ -178,7 +247,11 @@ export default function PricingPage() {
         window.location.href = data.url
       } else {
         console.error("Erreur:", data.error)
-        alert("Erreur lors de la redirection Stripe")
+        toast({
+          title: "Erreur",
+          description: data.error || "Erreur lors de la redirection Stripe",
+          variant: "destructive",
+        })
         if (planId) {
           setLoadingPlan(null)
         }
@@ -245,6 +318,76 @@ export default function PricingPage() {
         </div>
       </section>
 
+      {/* SECTION 2 : CODE PROMO */}
+      <section className="py-8 px-6 border-t border-white/5">
+        <div className="max-w-2xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-4"
+          >
+            <h3 className="text-xl font-semibold text-white text-center">Vous avez un code promo ?</h3>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={(e) => {
+                    setPromoCode(e.target.value.toUpperCase())
+                    setPromoError("")
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !promoLoading) {
+                      handleApplyPromo()
+                    }
+                  }}
+                  placeholder="Entrez votre code promo"
+                  disabled={promoLoading || !!appliedPromo}
+                  className="w-full px-4 py-3 rounded-xl bg-zinc-900/50 border border-white/10 text-white placeholder:text-zinc-500 focus:outline-none focus:border-indigo-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                {promoError && (
+                  <p className="mt-2 text-sm text-red-400 flex items-center gap-2">
+                    <X className="h-4 w-4" />
+                    {promoError}
+                  </p>
+                )}
+                {appliedPromo && (
+                  <p className="mt-2 text-sm text-green-400 flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Code {appliedPromo.code} appliqué avec succès
+                  </p>
+                )}
+              </div>
+              {appliedPromo ? (
+                <Button
+                  onClick={handleRemovePromo}
+                  variant="outline"
+                  className="px-6 border-red-500/30 text-red-400 hover:bg-red-500/10"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Retirer
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleApplyPromo}
+                  disabled={promoLoading || !promoCode.trim()}
+                  className="px-6 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 disabled:opacity-50"
+                >
+                  {promoLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Vérification...
+                    </>
+                  ) : (
+                    "Appliquer"
+                  )}
+                </Button>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
       {/* SECTION 2 : LES PLANS - L'ÉLÉGANCE */}
       <section className="py-24 px-6">
         <div className="max-w-7xl mx-auto">
@@ -297,9 +440,32 @@ export default function PricingPage() {
                     {/* Prix */}
                     <div className="space-y-1">
                       <div className="flex items-baseline gap-2">
-                        <span className="text-5xl font-bold text-white">{plan.price}€</span>
-                        <span className="text-lg text-zinc-400">{plan.period}</span>
+                        {appliedPromo && plan.planId !== "free" ? (
+                          <>
+                            <span className="text-3xl font-bold text-zinc-500 line-through">{plan.price}€</span>
+                            <span className="text-5xl font-bold text-green-400">
+                              {calculateDiscountedPrice(parseFloat(plan.price.replace(",", "."))).toFixed(2).replace(".", ",")}€
+                            </span>
+                            <span className="text-lg text-zinc-400">{plan.period}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-5xl font-bold text-white">{plan.price}€</span>
+                            <span className="text-lg text-zinc-400">{plan.period}</span>
+                          </>
+                        )}
                       </div>
+                      {appliedPromo && plan.planId !== "free" && (
+                        <div className="flex items-center gap-2 text-sm text-green-400">
+                          <CheckCircle2 className="h-4 w-4" />
+                          <span>
+                            Code appliqué :{" "}
+                            {appliedPromo.discount.percent_off
+                              ? `-${appliedPromo.discount.percent_off}%`
+                              : `-${appliedPromo.discount.amount_off}${appliedPromo.discount.currency || "€"}`}
+                          </span>
+                        </div>
+                      )}
                       <p className="text-sm text-zinc-500">{plan.description}</p>
                     </div>
 
@@ -349,6 +515,8 @@ export default function PricingPage() {
                             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                             Redirection vers Stripe...
                           </>
+                        ) : appliedPromo && calculateDiscountedPrice(parseFloat(plan.price.replace(",", "."))) === 0 ? (
+                          "S'abonner gratuitement"
                         ) : (
                           plan.cta
                         )}

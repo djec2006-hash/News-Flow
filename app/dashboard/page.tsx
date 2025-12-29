@@ -8,9 +8,15 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { PDFButton } from "@/components/ui/pdf-button"
 import { EmailButton } from "@/components/ui/email-button"
-import { Sparkles, Calendar, TrendingUp, FileText, Loader2, Zap } from "lucide-react"
+import { Sparkles, Calendar, TrendingUp, FileText, Loader2, Zap, Brain, Radar, Signal } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { getPlanConfig } from "@/lib/plans"
@@ -112,6 +118,8 @@ export default function DashboardPage() {
   const [flowCount, setFlowCount] = useState(0)
   const [weeklyFlowCount, setWeeklyFlowCount] = useState(0)
   const [dailyInstruction, setDailyInstruction] = useState("")
+  const [deepSearchMode, setDeepSearchMode] = useState(false)
+  const [lastFlowUsedDeepSearch, setLastFlowUsedDeepSearch] = useState(false)
 
   useEffect(() => {
     async function loadData() {
@@ -209,6 +217,7 @@ export default function DashboardPage() {
   async function handleGenerateFlow() {
     try {
       setGenerating(true)
+      setLastFlowUsedDeepSearch(deepSearchMode)
       
       // Phase 1: Enrichissement de la demande (si instruction fournie)
       if (dailyInstruction && dailyInstruction.trim().length > 0) {
@@ -220,12 +229,18 @@ export default function DashboardPage() {
       // Phase 2: Génération du Flow
       setGenerationPhase("generating")
 
+      // Délai supplémentaire pour Deep Search (simulation)
+      if (deepSearchMode) {
+        await new Promise(resolve => setTimeout(resolve, 2000))
+      }
+
       const response = await fetch("/api/generate-flow", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_id: user?.id || "demo",
           daily_instruction: dailyInstruction || null,
+          deep_search: deepSearchMode,
         }),
       })
 
@@ -289,6 +304,9 @@ export default function DashboardPage() {
       case "enhancing":
         return { icon: "🧠", text: "Optimisation de votre demande par l'IA..." }
       case "generating":
+        if (deepSearchMode) {
+          return { icon: "🔍", text: "Analyse approfondie des sources en cours..." }
+        }
         return { icon: "⚡", text: "Génération de votre Flow personnalisé..." }
       case "finalizing":
         return { icon: "✨", text: "Finalisation en cours..." }
@@ -393,9 +411,9 @@ export default function DashboardPage() {
 
       {/* Contenu principal */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           {/* Colonne principale (2/3) */}
-          <div className="lg:col-span-2 space-y-12 min-h-0">
+          <div className="lg:col-span-2 space-y-12">
         {/* Header */}
         <motion.div initial="hidden" animate="visible" variants={fadeIn} className="mb-12 pb-8 border-b border-white/5">
           <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white">
@@ -407,37 +425,62 @@ export default function DashboardPage() {
           </p>
         </motion.div>
 
-        {/* Stats Cards avec 3D */}
+        {/* Stats Cards avec 3D - Layout asymétrique */}
         <motion.div
+          id="tour-stats"
           initial="hidden"
           animate="visible"
           variants={staggerContainer}
-          className="grid gap-8 md:grid-cols-2 mb-12"
+          className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-12"
         >
-          {/* Card 1: Flows reçus */}
-          <motion.div variants={cardVariants}>
-            <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-zinc-900/40 backdrop-blur-md p-6 hover:border-white/10 transition-all group">
-              {/* ✨ Mini 3D scene - Étincelles */}
-              <div className="absolute top-4 right-4 w-20 h-20 opacity-60 group-hover:opacity-80 transition-opacity">
-                <Scene3DWrapper cameraPosition={[0, 0, 3]}>
-                  <StatShape type="sparkles" />
-                </Scene3DWrapper>
-              </div>
-
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-4">
-                  <FileText className="h-4 w-4 text-zinc-500" />
-                  <span className="text-sm font-medium text-zinc-400">Flows reçus</span>
+          {/* Colonne Gauche (1/3) - Deux cartes empilées */}
+          <div className="lg:col-span-1 flex flex-col gap-4">
+            {/* Card 1: Flows reçus */}
+            <motion.div variants={cardVariants} className="flex-1">
+              <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-zinc-900/40 backdrop-blur-md p-6 hover:border-white/10 transition-all group h-full">
+                {/* ✨ Mini 3D scene - Étincelles */}
+                <div className="absolute top-4 right-4 w-20 h-20 opacity-60 group-hover:opacity-80 transition-opacity">
+                  <Scene3DWrapper cameraPosition={[0, 0, 3]}>
+                    <StatShape type="sparkles" />
+                  </Scene3DWrapper>
                 </div>
-                <div className="text-4xl font-bold text-white mb-2">{flowCount}</div>
-                <p className="text-xs text-zinc-500">Total depuis votre inscription</p>
-              </div>
-            </div>
-          </motion.div>
 
-          {/* Card 2: Plan */}
-          <motion.div variants={cardVariants}>
-            <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-zinc-900/40 backdrop-blur-md p-6 hover:border-white/10 transition-all group">
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-4">
+                    <FileText className="h-4 w-4 text-zinc-500" />
+                    <span className="text-sm font-medium text-zinc-400">Flows reçus</span>
+                  </div>
+                  <div className="text-4xl font-bold text-white mb-2">{flowCount}</div>
+                  <p className="text-xs text-zinc-500">Total depuis votre inscription</p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Card 2: Sources actives */}
+            <motion.div variants={cardVariants} className="flex-1">
+              <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-zinc-900/40 backdrop-blur-md p-6 hover:border-white/10 transition-all group h-full">
+                {/* 📡 Mini 3D scene - Satellite/Signal */}
+                <div className="absolute top-4 right-4 w-20 h-20 opacity-60 group-hover:opacity-80 transition-opacity">
+                  <Scene3DWrapper cameraPosition={[0, 0, 3]}>
+                    <StatShape type="sparkles" />
+                  </Scene3DWrapper>
+                </div>
+
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Signal className="h-4 w-4 text-zinc-500" />
+                    <span className="text-sm font-medium text-zinc-400">Sources actives</span>
+                  </div>
+                  <div className="text-4xl font-bold text-white mb-2">142</div>
+                  <p className="text-xs text-zinc-500">Total des flux surveillés</p>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Colonne Droite (2/3) - Plan actuel large */}
+          <motion.div variants={cardVariants} className="lg:col-span-2 h-full">
+            <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-zinc-900/40 backdrop-blur-md p-6 hover:border-white/10 transition-all group h-full">
               {/* 💎 Mini 3D scene - Prisme de Cristal */}
               <div className="absolute top-4 right-4 w-20 h-20 opacity-60 group-hover:opacity-85 transition-opacity">
                 <Scene3DWrapper cameraPosition={[0, 0, 2.8]}>
@@ -555,9 +598,73 @@ export default function DashboardPage() {
                 )}
               </div>
 
+              {/* Toggle Deep Search */}
+              <TooltipProvider>
+                <div className="flex items-center justify-between p-4 rounded-xl bg-zinc-950/50 border border-white/10">
+                  <div className="flex items-center gap-3">
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${
+                      deepSearchMode 
+                        ? "bg-cyan-500/20 border border-cyan-500/30" 
+                        : "bg-indigo-500/10 border border-indigo-500/20"
+                    }`}>
+                      {deepSearchMode ? (
+                        <Brain className="h-5 w-5 text-cyan-400" />
+                      ) : (
+                        <Zap className="h-5 w-5 text-indigo-400" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="deep-search" className="text-sm font-medium text-white cursor-pointer">
+                          {deepSearchMode ? "Mode Deep Search" : "Mode Standard"}
+                        </Label>
+                        {deepSearchMode && (
+                          <span className="inline-flex items-center rounded-full bg-cyan-500/20 border border-cyan-500/30 px-2 py-0.5 text-xs font-medium text-cyan-400">
+                            Analyse approfondie
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        {deepSearchMode 
+                          ? "Analyse sémantique complète du contenu (Plus lent)" 
+                          : "Recherche rapide sur les sources principales"}
+                      </p>
+                    </div>
+                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => setDeepSearchMode(!deepSearchMode)}
+                        disabled={generating}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-zinc-950 ${
+                          deepSearchMode 
+                            ? "bg-cyan-500 focus:ring-cyan-500" 
+                            : "bg-zinc-700 focus:ring-indigo-500"
+                        } ${generating ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            deepSearchMode ? "translate-x-6" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" className="bg-zinc-900 border border-cyan-500/30 text-cyan-300">
+                      <p className="text-xs">
+                        {deepSearchMode 
+                          ? "Analyse sémantique complète du contenu (Plus lent)" 
+                          : "Cliquez pour activer Deep Search"}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </TooltipProvider>
+
               <motion.div whileTap={{ scale: generating ? 1 : 0.98 }} className="relative inline-block">
                 <div className={`absolute -inset-1 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-xl blur opacity-30 ${generating ? 'animate-pulse' : 'group-hover:opacity-50'}`} />
                 <Button
+                  id="tour-generate-flow"
                   onClick={handleGenerateFlow}
                   disabled={generating || !canGenerateFlow}
                   size="lg"
@@ -602,11 +709,11 @@ export default function DashboardPage() {
                       )}
                       {generationPhase === "generating" && (
                         <motion.div
-                          animate={{ scale: [1, 1.2, 1] }}
-                          transition={{ duration: 1, repeat: Infinity }}
+                          animate={deepSearchMode ? { rotate: 360 } : { scale: [1, 1.2, 1] }}
+                          transition={deepSearchMode ? { duration: 2, repeat: Infinity, ease: "linear" } : { duration: 1, repeat: Infinity }}
                           className="text-xl"
                         >
-                          ⚡
+                          {deepSearchMode ? "🔍" : "⚡"}
                         </motion.div>
                       )}
                       {generationPhase === "finalizing" && (
@@ -658,14 +765,14 @@ export default function DashboardPage() {
           </div>
 
           {/* Colonne latérale (1/3) - LiveFeed */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 flex flex-col h-full">
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.5 }}
-              className="sticky top-8"
+              className="sticky top-8 flex flex-col h-full"
             >
-              <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-zinc-900/40 backdrop-blur-md p-6 h-[680px] flex flex-col">
+              <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-zinc-900/40 backdrop-blur-md p-6 flex flex-col h-full">
                 <LiveFeed />
               </div>
             </motion.div>
@@ -684,7 +791,15 @@ export default function DashboardPage() {
                 <div className="border-b border-white/5 p-6">
                   <div className="flex items-start justify-between">
                     <div>
-                      <h2 className="text-2xl font-bold text-white mb-2">Dernier Flow généré</h2>
+                      <div className="flex items-center gap-3 mb-2">
+                        <h2 className="text-2xl font-bold text-white">Dernier Flow généré</h2>
+                        {lastFlowUsedDeepSearch && (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-500/20 border border-cyan-500/30 px-3 py-1 text-xs font-medium text-cyan-400">
+                            <Brain className="h-3 w-3" />
+                            Analysé par Deep Search
+                          </span>
+                        )}
+                      </div>
                         <div className="flex items-center gap-4 text-sm text-zinc-400">
                           <div className="flex items-center gap-2">
                             <Calendar className="h-4 w-4" />
@@ -699,7 +814,7 @@ export default function DashboardPage() {
                           </span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div id="tour-export" className="flex items-center gap-2">
                         <EmailButton
                           flowId={latestFlow.id}
                           variant="outline"

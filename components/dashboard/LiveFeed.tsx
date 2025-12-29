@@ -5,15 +5,81 @@ import { motion } from "framer-motion"
 import { ExternalLink, Loader2, Radio, RefreshCw } from "lucide-react"
 import { getLiveNews, type LiveNewsItem } from "@/app/actions/live-news"
 import { createClient } from "@/lib/supabase/client"
+import { useToast } from "@/hooks/use-toast"
+
+// Interface pour la configuration du Live Feed
+interface LiveFeedConfig {
+  refreshRate: number // en millisecondes
+  maxItems: number
+  autoRefresh: boolean
+  categories: string[]
+}
+
+// Configuration par défaut
+const DEFAULT_CONFIG: LiveFeedConfig = {
+  refreshRate: 60000, // 1 minute
+  maxItems: 3,
+  autoRefresh: true,
+  categories: [], // Toutes les catégories par défaut
+}
+
+const STORAGE_KEY = "newsflow_feed_config"
 
 export function LiveFeed() {
   const [news, setNews] = useState<LiveNewsItem[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
+  const [config, setConfig] = useState<LiveFeedConfig>(DEFAULT_CONFIG)
+  const { toast } = useToast()
+
+  // Gestion de l'hydratation Next.js
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  // Chargement de la configuration depuis localStorage au montage
+  useEffect(() => {
+    if (!isMounted) return
+
+    try {
+      const savedConfig = localStorage.getItem(STORAGE_KEY)
+      if (savedConfig) {
+        const parsed = JSON.parse(savedConfig)
+        setConfig({ ...DEFAULT_CONFIG, ...parsed })
+      }
+    } catch (error) {
+      console.warn("[LiveFeed] Erreur lors du chargement de la config:", error)
+    }
+  }, [isMounted])
+
+  // Sauvegarde automatique de la configuration dans localStorage
+  useEffect(() => {
+    if (!isMounted) return
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
+    } catch (error) {
+      console.warn("[LiveFeed] Erreur lors de la sauvegarde de la config:", error)
+    }
+  }, [config, isMounted])
+
+  // Rafraîchissement automatique si activé
+  useEffect(() => {
+    if (!isMounted || !config.autoRefresh) return
+
+    const interval = setInterval(() => {
+      loadNews(true)
+    }, config.refreshRate)
+
+    return () => clearInterval(interval)
+  }, [isMounted, config.autoRefresh, config.refreshRate])
 
   useEffect(() => {
-    loadNews()
-  }, [])
+    if (isMounted) {
+      loadNews()
+    }
+  }, [isMounted])
 
   const loadNews = async (isRefresh = false) => {
     if (isRefresh) {
@@ -30,7 +96,9 @@ export function LiveFeed() {
       } = await supabase.auth.getUser()
 
       const items = await getLiveNews(user?.id)
-      setNews(items)
+      // Limiter l'affichage selon la configuration
+      const maxItems = isMounted ? config.maxItems : DEFAULT_CONFIG.maxItems
+      setNews(items.slice(0, maxItems))
     } catch (error) {
       console.error("Failed to load live news:", error)
     } finally {
@@ -42,21 +110,64 @@ export function LiveFeed() {
     }
   }
 
-  // Calcule le temps relatif
+  // Fonction pour mettre à jour la configuration avec feedback
+  const updateConfig = (newConfig: Partial<LiveFeedConfig>) => {
+    setConfig((prev) => {
+      const updated = { ...prev, ...newConfig }
+      // Afficher un toast de confirmation
+      toast({
+        title: "Paramètres sauvegardés",
+        description: "Vos préférences ont été enregistrées",
+        duration: 2000,
+      })
+      return updated
+    })
+  }
+
+  // NOUVEAU CODE: Fonction robuste pour calculer le temps écoulé
+  // ANCIEN CODE: La fonction précédente ne gérait pas les dates invalides ou futures
   const getRelativeTime = (dateString: string) => {
+    if (!dateString) return "À l'instant"
+    
+    // Parsing robuste de la date
     const date = new Date(dateString)
+    
+    // Vérification que la date est valide
+    if (isNaN(date.getTime())) {
+      console.warn("[LiveFeed] Date invalide:", dateString)
+      return "À l'instant"
+    }
+    
     const now = new Date()
     const diffMs = now.getTime() - date.getTime()
+    
+    // Si la date est dans le futur (décalage horaire ou erreur), retourner "À l'instant"
+    if (diffMs < 0) {
+      console.warn("[LiveFeed] Date dans le futur:", dateString)
+      return "À l'instant"
+    }
+    
     const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMs / 3600000)
-
+    
+    // Si moins d'1 minute, retourner "À l'instant"
+    if (diffMins < 1) {
+      return "À l'instant"
+    }
+    
+    // Si moins d'1 heure, retourner en minutes
     if (diffMins < 60) {
       return `il y a ${diffMins} min`
-    } else if (diffHours < 24) {
-      return `il y a ${diffHours}h`
-    } else {
-      return date.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })
     }
+    
+    // Si moins de 24 heures, retourner en heures
+    const diffHours = Math.floor(diffMins / 60)
+    if (diffHours < 24) {
+      return `il y a ${diffHours} h`
+    }
+    
+    // Si plus de 24 heures, retourner en jours
+    const diffDays = Math.floor(diffHours / 24)
+    return `il y a ${diffDays} j`
   }
 
   // Couleur de la source
@@ -95,12 +206,12 @@ export function LiveFeed() {
 
       {/* Liste des news - Scrollable optimisée */}
       {news.length === 0 ? (
-        <div className="text-center py-8 text-zinc-500 text-sm">
+        <div className="text-center py-8 text-zinc-500 text-sm flex-grow flex items-center justify-center">
           Aucune actualité récente disponible
         </div>
       ) : (
         <div 
-          className="space-y-2 overflow-y-auto overscroll-contain pr-2 flex-1 max-h-[400px] scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent hover:scrollbar-thumb-zinc-600"
+          className="space-y-2 overflow-y-auto overscroll-contain pr-2 flex-grow scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent hover:scrollbar-thumb-zinc-600"
           style={{
             scrollbarWidth: 'thin',
             scrollbarColor: '#3f3f46 transparent'
@@ -114,7 +225,7 @@ export function LiveFeed() {
               rel="noopener noreferrer"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.05 }}
+              transition={{ delay: index * 0.1 }}
               className="group block relative overflow-hidden rounded-xl border border-white/5 bg-zinc-900/40 backdrop-blur-sm p-4 hover:bg-white/5 hover:border-indigo-500/30 transition-all duration-300"
             >
               {/* Ligne d'accentuation qui apparaît au hover */}
@@ -143,7 +254,16 @@ export function LiveFeed() {
 
       {/* Bouton refresh - Fixe en bas */}
       <motion.button
-        onClick={() => loadNews(true)}
+        onClick={() => {
+          loadNews(true)
+          if (isMounted) {
+            toast({
+              title: "Actualisation",
+              description: "Flux mis à jour",
+              duration: 2000,
+            })
+          }
+        }}
         disabled={refreshing}
         whileHover={{ scale: refreshing ? 1 : 1.02 }}
         whileTap={{ scale: refreshing ? 1 : 0.98 }}

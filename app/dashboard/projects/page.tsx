@@ -277,13 +277,34 @@ const LENGTH_OPTIONS = [
   { value: "very_detailed", label: "Très détaillé", fullLabel: "Très détaillé – analyse longue et poussée" },
 ]
 
-function getComplexityBadgeStyle(complexity: string, theme: ThemeColors) {
-  // Utilise la couleur du thème pour les badges
-  return `${theme.bgBadge} ${theme.text} border ${theme.border}`
+function getComplexityBadgeStyle(complexity: string) {
+  // Style néon sobre selon la valeur de difficulté
+  if (complexity === "expert" || complexity === "advanced") {
+    return "bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/30"
+  }
+  if (complexity === "standard") {
+    return "bg-cyan-500/10 text-cyan-400 border border-cyan-500/30"
+  }
+  if (complexity === "very_simple") {
+    return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+  }
+  // Par défaut
+  return "bg-zinc-700/50 text-zinc-400 border border-zinc-600/50"
 }
 
-function getLengthBadgeStyle(theme: ThemeColors) {
-  return `${theme.bgBadge} ${theme.text} border ${theme.border} opacity-80`
+function getLengthBadgeStyle(length: string) {
+  // Style néon sobre selon la valeur de longueur
+  if (length === "very_detailed") {
+    return "bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/30"
+  }
+  if (length === "standard") {
+    return "bg-cyan-500/10 text-cyan-400 border border-cyan-500/30"
+  }
+  if (length === "very_short" || length === "short") {
+    return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+  }
+  // Par défaut
+  return "bg-zinc-700/50 text-zinc-400 border border-zinc-600/50"
 }
 
 // Fonctions pour les couleurs conditionnelles des sélecteurs
@@ -1071,27 +1092,14 @@ export default function ProjectsPage() {
                     `}
                   >
                     
-                    {/* Badge Actif */}
-                    {project.is_active && (
-                      <div className="absolute top-3 right-3 z-10">
-                        <Badge className={`${theme.bgBadge} ${theme.text} border ${theme.border} font-semibold`}>
-                          ✨ Actif
-                        </Badge>
-                      </div>
-                    )}
-                    
                     <CardHeader className="relative pb-3">
                       <div className="flex items-start gap-3">
-                        {/* Icône du domaine */}
-                        <div className={`
-                          p-3 rounded-xl ${theme.bgBadge} border ${theme.border}
-                          text-2xl flex items-center justify-center
-                          group-hover:scale-110 transition-transform
-                        `}>
+                        {/* Icône du domaine - sans fond coloré */}
+                        <div className="text-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
                           {getDomainIcon(project.domain)}
                         </div>
                         
-                        <div className="flex-1 min-w-0 pr-16">
+                        <div className="flex-1 min-w-0">
                           <CardTitle className="text-lg text-white truncate mb-1">
                             {project.title}
                           </CardTitle>
@@ -1105,13 +1113,13 @@ export default function ProjectsPage() {
                       <div className="flex flex-wrap gap-2 mt-4">
                         <Badge 
                           variant="outline" 
-                          className={getComplexityBadgeStyle(project.complexity_level, theme)}
+                          className={getComplexityBadgeStyle(project.complexity_level)}
                         >
                           {getComplexityLabel(project.complexity_level)}
                         </Badge>
                         <Badge 
                           variant="outline" 
-                          className={getLengthBadgeStyle(theme)}
+                          className={getLengthBadgeStyle((project as any).length_level || "standard")}
                         >
                           {getLengthLabel((project as any).length_level || "standard")}
                         </Badge>
@@ -1172,11 +1180,11 @@ export default function ProjectsPage() {
                         </Button>
                       </div>
                       
-                      {/* Switch avec couleur thématique */}
+                      {/* Switch néon indigo */}
                       <Switch
                         checked={project.is_active}
                         onCheckedChange={(checked) => toggleProjectActive(project.id, checked)}
-                        className={theme.switchOn}
+                        className="data-[state=checked]:bg-indigo-500 data-[state=checked]:shadow-lg data-[state=checked]:shadow-indigo-500/40"
                       />
                     </CardContent>
                   </Card>

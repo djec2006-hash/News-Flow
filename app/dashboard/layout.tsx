@@ -1,6 +1,7 @@
 import type React from "react"
 import { DashboardNav } from "@/components/dashboard-nav"
 import { PromoRedeemer } from "@/components/logic/PromoRedeemer"
+import OnboardingManager from "@/components/onboarding/OnboardingManager"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -9,6 +10,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <main className="flex-1 overflow-y-auto bg-zinc-950">
         {/* Composant invisible qui applique automatiquement les codes promo après connexion */}
         <PromoRedeemer />
+        {/* Gestionnaire d'onboarding interactif */}
+        <OnboardingManager />
         {children}
       </main>
     </div>

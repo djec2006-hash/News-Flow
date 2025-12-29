@@ -67,3 +67,4 @@ COMMENT ON COLUMN public.email_settings.delivery_time IS 'Heure d''envoi au form
 COMMENT ON COLUMN public.email_settings.recipients IS 'Liste des adresses email destinataires (max 3)';
 
 
+
