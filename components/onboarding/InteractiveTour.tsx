@@ -170,7 +170,11 @@ export default function InteractiveTour({
     onComplete?.()
   }
 
-  if (!isActive) return null
+  // Early return : si le tour n'est pas actif, on ne rend RIEN DU TOUT
+  // Cela empêche le curseur fantôme d'apparaître en position (0,0)
+  if (!isActive) {
+    return null
+  }
 
   // Calculer la position de la tooltip
   const getTooltipPosition = () => {
@@ -231,9 +235,9 @@ export default function InteractiveTour({
         )}
       </AnimatePresence>
 
-      {/* Curseur virtuel animé */}
-      <AnimatePresence>
-        {isActive && (
+      {/* Curseur virtuel animé - Ne jamais rendre si isActive est false */}
+      {isActive && (
+        <AnimatePresence>
           <motion.div
             ref={cursorRef}
             initial={{ opacity: 0, scale: 0, x: cursorPosition.x, y: cursorPosition.y }}
@@ -292,8 +296,8 @@ export default function InteractiveTour({
               transition={{ duration: 1, repeat: Infinity, repeatDelay: 0.5 }}
             />
           </motion.div>
-        )}
-      </AnimatePresence>
+        </AnimatePresence>
+      )}
 
       {/* Tooltip explicative */}
       <AnimatePresence>
