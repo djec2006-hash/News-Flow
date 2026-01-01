@@ -18,7 +18,7 @@ interface LiveFeedConfig {
 // Configuration par défaut
 const DEFAULT_CONFIG: LiveFeedConfig = {
   refreshRate: 60000, // 1 minute
-  maxItems: 3,
+  maxItems: 15, // Afficher au minimum 10-15 articles
   autoRefresh: true,
   categories: [], // Toutes les catégories par défaut
 }
@@ -196,11 +196,13 @@ export function LiveFeed() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       {/* Header - Fixe */}
-      <div className="flex items-center gap-2 mb-4 flex-shrink-0">
-        <Radio className="h-4 w-4 text-red-500 animate-pulse" />
-        <h3 className="text-lg font-bold text-white">Live Feed</h3>
+      <div className="flex items-center justify-between mb-4 flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <Radio className="h-4 w-4 text-red-500 animate-pulse" />
+          <h3 className="text-lg font-bold text-white">Live Feed</h3>
+        </div>
         <span className="text-xs text-zinc-500">Dernières 24h</span>
       </div>
 
@@ -211,7 +213,7 @@ export function LiveFeed() {
         </div>
       ) : (
         <div 
-          className="space-y-2 overflow-y-auto overscroll-contain pr-2 flex-grow scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent hover:scrollbar-thumb-zinc-600"
+          className="space-y-2 overflow-y-auto overscroll-contain pr-2 flex-1 min-h-0 scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent hover:scrollbar-thumb-zinc-600"
           style={{
             scrollbarWidth: 'thin',
             scrollbarColor: '#3f3f46 transparent'

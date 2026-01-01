@@ -13,3 +13,4 @@ CREATE INDEX IF NOT EXISTS idx_profiles_has_seen_onboarding
 ON profiles(has_seen_onboarding) 
 WHERE has_seen_onboarding = false;
 
+

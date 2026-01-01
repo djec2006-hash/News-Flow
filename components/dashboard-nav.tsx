@@ -54,7 +54,7 @@ export function DashboardNav() {
           )
         })}
       </nav>
-      <div className="border-t border-border p-4">
+      <div className="border-t border-border p-4" suppressHydrationWarning={true}>
         <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}>
           <LogOut className="mr-3 h-5 w-5" />
           Se déconnecter

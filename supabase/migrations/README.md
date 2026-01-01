@@ -63,3 +63,4 @@ Configurez un cron job qui appelle votre URL avec le header Authorization.
 - Les politiques RLS permettent la lecture publique mais nécessitent le service_role pour l'écriture
 - La clé secrète doit être longue et aléatoire (générez-la avec `openssl rand -hex 32`)
 
+

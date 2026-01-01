@@ -389,7 +389,7 @@ export default function PricingPage() {
       </section>
 
       {/* SECTION 2 : LES PLANS - L'ÉLÉGANCE */}
-      <section className="py-24 px-6">
+      <section className="py-16 md:py-20 px-6">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial="hidden"
@@ -406,7 +406,7 @@ export default function PricingPage() {
               >
                 {/* Carte */}
                 <div
-                  className={`relative h-full rounded-3xl p-8 backdrop-blur-xl border ${plan.cardStyle} transition-all duration-500 hover:border-white/20`}
+                  className={`relative h-full rounded-3xl p-5 md:p-6 2xl:p-8 backdrop-blur-xl border ${plan.cardStyle} transition-all duration-500 hover:border-white/20`}
                 >
                   {/* Badge dynamique */}
                   {plan.badgeText && (
@@ -430,10 +430,10 @@ export default function PricingPage() {
                   )}
 
                   {/* Contenu */}
-                  <div className="relative z-10 space-y-6">
+                  <div className="relative z-10 space-y-4 md:space-y-5">
                     {/* Header */}
                     <div className="space-y-2">
-                      <h3 className="text-2xl font-bold text-white">{plan.name}</h3>
+                      <h3 className="text-xl md:text-2xl font-bold text-white">{plan.name}</h3>
                       <p className="text-sm text-zinc-500 uppercase tracking-wider">{plan.tagline}</p>
                     </div>
 
@@ -442,16 +442,16 @@ export default function PricingPage() {
                       <div className="flex items-baseline gap-2">
                         {appliedPromo && plan.planId !== "free" ? (
                           <>
-                            <span className="text-3xl font-bold text-zinc-500 line-through">{plan.price}€</span>
-                            <span className="text-5xl font-bold text-green-400">
+                            <span className="text-2xl md:text-3xl font-bold text-zinc-500 line-through">{plan.price}€</span>
+                            <span className="text-4xl md:text-5xl font-bold text-green-400">
                               {calculateDiscountedPrice(parseFloat(plan.price.replace(",", "."))).toFixed(2).replace(".", ",")}€
                             </span>
-                            <span className="text-lg text-zinc-400">{plan.period}</span>
+                            <span className="text-sm md:text-base text-zinc-400">{plan.period}</span>
                           </>
                         ) : (
                           <>
-                            <span className="text-5xl font-bold text-white">{plan.price}€</span>
-                            <span className="text-lg text-zinc-400">{plan.period}</span>
+                            <span className="text-4xl md:text-5xl font-bold text-white">{plan.price}€</span>
+                            <span className="text-sm md:text-base text-zinc-400">{plan.period}</span>
                           </>
                         )}
                       </div>
@@ -470,7 +470,7 @@ export default function PricingPage() {
                     </div>
 
                     {/* Features */}
-                    <ul className="space-y-3 py-6">
+                    <ul className="space-y-2 py-4">
                       {plan.features.map((feature, i) => (
                         <li key={i} className="flex items-start gap-3 text-zinc-300">
                           <Check className="h-5 w-5 text-indigo-400 shrink-0 mt-0.5" />
@@ -483,7 +483,7 @@ export default function PricingPage() {
                     {plan.planId === "free" ? (
                       <Button
                         asChild
-                        className="w-full py-6 text-base font-semibold rounded-xl transition-all duration-300 bg-white/5 text-white hover:bg-white/10 border border-white/10"
+                        className="w-full py-4 md:py-5 text-base font-semibold rounded-xl transition-all duration-300 bg-white/5 text-white hover:bg-white/10 border border-white/10"
                       >
                         <Link href={plan.href}>{plan.cta}</Link>
                       </Button>
@@ -502,7 +502,7 @@ export default function PricingPage() {
                           }
                         }}
                         disabled={loadingPlan !== null}
-                        className={`w-full py-6 text-base font-semibold rounded-xl transition-all duration-300 ${
+                        className={`w-full py-4 md:py-5 text-base font-semibold rounded-xl transition-all duration-300 ${
                           plan.planId === 'basic'
                             ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:shadow-lg hover:shadow-cyan-500/50 disabled:opacity-50"
                             : plan.planId === 'pro'

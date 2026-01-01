@@ -336,7 +336,7 @@ export default function LandingPage() {
       {/* Contenu principal */}
       <main className="relative z-10">
         {/* HERO SECTION */}
-        <section className="relative min-h-screen flex items-center justify-center px-4 py-32">
+        <section className="relative min-h-screen flex items-center justify-center px-4 py-20 lg:py-24 xl:py-32">
           {/* Globe 3D en arrière-plan - Surveillance mondiale temps réel */}
           <div className="absolute inset-0 flex items-center justify-center opacity-50 -z-10">
             <div className="w-full h-full max-w-5xl">
@@ -365,7 +365,7 @@ export default function LandingPage() {
             {/* Titre principal - Animation mot par mot */}
             <AnimatedTitle
               text="L'information que vous cherchiez. Livrée avant même de la demander."
-              className="text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.1] text-white"
+              className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl font-bold tracking-tight leading-tight text-white"
             />
 
             {/* Sous-titre */}
@@ -551,14 +551,14 @@ export default function LandingPage() {
         </section>
 
         {/* PRICING - Style de la page Tarif */}
-        <section className="relative py-32 px-4 border-t border-white/5">
+        <section className="relative py-16 md:py-20 px-4 border-t border-white/5">
           <div className="max-w-7xl mx-auto">
             <motion.div
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, amount: 0.1 }}
               variants={fadeInUp}
-              className="text-center mb-20 space-y-4"
+              className="text-center mb-12 md:mb-16 space-y-4"
             >
               <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-white">Commencez gratuitement</h2>
               <p className="text-lg text-zinc-400 max-w-2xl mx-auto">
@@ -581,7 +581,7 @@ export default function LandingPage() {
                 >
                   {/* Carte */}
                   <div
-                    className={`relative h-full rounded-3xl p-8 backdrop-blur-xl border ${plan.cardStyle} transition-all duration-500 hover:border-white/20`}
+                    className={`relative h-full rounded-3xl p-5 md:p-6 2xl:p-8 backdrop-blur-xl border ${plan.cardStyle} transition-all duration-500 hover:border-white/20`}
                   >
                     {/* Badge dynamique */}
                     {plan.badgeText && (
@@ -605,24 +605,24 @@ export default function LandingPage() {
                     )}
 
                     {/* Contenu */}
-                    <div className="relative z-10 space-y-6">
+                    <div className="relative z-10 space-y-4 md:space-y-5">
                       {/* Header */}
                       <div className="space-y-2">
-                        <h3 className="text-2xl font-bold text-white">{plan.name}</h3>
+                        <h3 className="text-xl md:text-2xl font-bold text-white">{plan.name}</h3>
                         <p className="text-sm text-zinc-500 uppercase tracking-wider">{plan.tagline}</p>
                       </div>
 
                       {/* Prix */}
                       <div className="space-y-1">
                         <div className="flex items-baseline gap-2">
-                          <span className="text-5xl font-bold text-white">{plan.price}€</span>
-                          <span className="text-lg text-zinc-400">{plan.period}</span>
+                          <span className="text-4xl md:text-5xl font-bold text-white">{plan.price}€</span>
+                          <span className="text-sm md:text-base text-zinc-400">{plan.period}</span>
                         </div>
                         <p className="text-sm text-zinc-500">{plan.description}</p>
                       </div>
 
                       {/* Features */}
-                      <ul className="space-y-3 py-6">
+                      <ul className="space-y-2 py-4">
                         {plan.features.map((feature, i) => (
                           <li key={i} className="flex items-start gap-3 text-zinc-300">
                             <Check className="h-5 w-5 text-indigo-400 shrink-0 mt-0.5" />
@@ -635,7 +635,7 @@ export default function LandingPage() {
                       {plan.planId === "free" ? (
                         <Button
                           asChild
-                          className="w-full py-6 text-base font-semibold rounded-xl transition-all duration-300 bg-white/5 text-white hover:bg-white/10 border border-white/10"
+                          className="w-full py-4 md:py-5 text-base font-semibold rounded-xl transition-all duration-300 bg-white/5 text-white hover:bg-white/10 border border-white/10"
                         >
                           <Link href={plan.href}>{plan.cta}</Link>
                         </Button>
@@ -654,7 +654,7 @@ export default function LandingPage() {
                             }
                           }}
                           disabled={loadingPlan !== null}
-                          className={`w-full py-6 text-base font-semibold rounded-xl transition-all duration-300 ${
+                          className={`w-full py-4 md:py-5 text-base font-semibold rounded-xl transition-all duration-300 ${
                             plan.planId === 'basic'
                               ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:shadow-lg hover:shadow-cyan-500/50 disabled:opacity-50"
                               : plan.planId === 'pro'

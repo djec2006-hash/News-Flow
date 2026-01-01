@@ -8,3 +8,4 @@ COMMENT ON COLUMN public.live_feed_settings.refresh_rate IS 'Rythme de rafraîch
 
 
 
+

@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import dynamic from "next/dynamic"
 import Logo from "@/components/ui/logo"
+import { getURL } from "@/lib/utils"
 
 const Particles = dynamic(() => import("@/components/ui/particles"), { ssr: false })
 const NewsGlobe = dynamic(() => import("@/components/3d/NewsGlobe"), { ssr: false })
@@ -40,7 +41,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${getURL()}/auth/callback`,
         },
       })
 

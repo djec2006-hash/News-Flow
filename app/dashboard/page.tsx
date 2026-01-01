@@ -28,6 +28,7 @@ import { LiveFeed } from "@/components/dashboard/LiveFeed"
 
 const Scene3DWrapper = dynamic(() => import("@/components/3d/Scene3DWrapper"), { ssr: false })
 const StatShape = dynamic(() => import("@/components/3d/dashboard/StatShape"), { ssr: false })
+const NetworkVisual = dynamic(() => import("@/components/3d/dashboard/NetworkVisual"), { ssr: false })
 
 // Variants pour animations
 const fadeIn: Variants = {
@@ -459,10 +460,10 @@ export default function DashboardPage() {
             {/* Card 2: Sources actives */}
             <motion.div variants={cardVariants} className="flex-1">
               <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-zinc-900/40 backdrop-blur-md p-6 hover:border-white/10 transition-all group h-full">
-                {/* 📡 Mini 3D scene - Satellite/Signal */}
+                {/* 📡 Mini 3D scene - Network Visual */}
                 <div className="absolute top-4 right-4 w-20 h-20 opacity-60 group-hover:opacity-80 transition-opacity">
                   <Scene3DWrapper cameraPosition={[0, 0, 3]}>
-                    <StatShape type="sparkles" />
+                    <NetworkVisual />
                   </Scene3DWrapper>
                 </div>
 
