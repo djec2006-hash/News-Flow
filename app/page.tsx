@@ -340,7 +340,7 @@ export default function LandingPage() {
           {/* Globe 3D en arrière-plan - Surveillance mondiale temps réel */}
           <div className="absolute inset-0 flex items-center justify-center opacity-50 -z-10">
             <div className="w-full h-full max-w-5xl">
-              <Scene3DWrapper cameraPosition={[0, 0, 6]}>
+              <Scene3DWrapper cameraPosition={[0, 0, 6.5]}>
                 <NewsGlobe />
               </Scene3DWrapper>
             </div>

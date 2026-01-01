@@ -7,6 +7,7 @@ import * as THREE from "three"
 export default function NewsGlobe() {
   const globeGroupRef = useRef<THREE.Group>(null)
   const pointsRef = useRef<THREE.Points>(null)
+  const markersRef = useRef<THREE.Points>(null)
 
   const radius = 2
 
@@ -18,11 +19,11 @@ export default function NewsGlobe() {
   )
 
   // Générer les points du globe par échantillonnage de la texture landmask
-  const globeGeometry = useMemo(() => {
-    // Grille augmentée d'environ 25% : 225 méridiens x 113 parallèles = 25,425 points candidats
-    // Environ 7k-9k points valides sur les terres (30-45% de la surface)
-    const widthSegments = 225  // Méridiens (longitude) - Augmenté de 180 à 225 (+25%)
-    const heightSegments = 113  // Parallèles (latitude) - Augmenté de 90 à 113 (+25%)
+  const { globeGeometry, landPositions } = useMemo(() => {
+    // Grille légèrement augmentée (~10%) : 277 méridiens x 140 parallèles = 38,780 points candidats
+    // Environ 9k-11k points valides sur les terres (30-45% de la surface)
+    const widthSegments = 277  // Méridiens (longitude) - Augmenté de 252 à 277 (+10%)
+    const heightSegments = 140  // Parallèles (latitude) - Augmenté de 127 à 140 (+10%)
 
     const positions: number[] = []
 
@@ -32,7 +33,9 @@ export default function NewsGlobe() {
     
     if (!ctx || !earthTexture.image) {
       // Fallback si texture pas encore chargée
-      return new THREE.BufferGeometry()
+      const emptyGeometry = new THREE.BufferGeometry()
+      emptyGeometry.setAttribute("position", new THREE.Float32BufferAttribute([], 3))
+      return { globeGeometry: emptyGeometry, landPositions: [] }
     }
 
     canvas.width = earthTexture.image.width
@@ -88,8 +91,45 @@ export default function NewsGlobe() {
     const geometry = new THREE.BufferGeometry()
     geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3))
 
-    return geometry
+    // Retourner aussi les positions pour les marqueurs rouges
+    return { globeGeometry: geometry, landPositions: positions }
   }, [earthTexture])
+
+  // Générer les marqueurs rouges en piochant parmi les positions des points bleus (continents)
+  const markersGeometry = useMemo(() => {
+    const markerCount = 25 // Nombre de marqueurs rouges (20-30)
+    const markerPositions: number[] = []
+
+    // Si on n'a pas encore de positions de continents, retourner une géométrie vide
+    if (!landPositions || landPositions.length === 0) {
+      const emptyGeometry = new THREE.BufferGeometry()
+      emptyGeometry.setAttribute("position", new THREE.Float32BufferAttribute([], 3))
+      return emptyGeometry
+    }
+
+    // Convertir le tableau plat en tableau de triplets [x, y, z]
+    const positionsArray: [number, number, number][] = []
+    for (let i = 0; i < landPositions.length; i += 3) {
+      positionsArray.push([landPositions[i], landPositions[i + 1], landPositions[i + 2]])
+    }
+
+    // Sélectionner aléatoirement markerCount positions parmi les positions des continents
+    const selectedIndices = new Set<number>()
+    while (selectedIndices.size < markerCount && selectedIndices.size < positionsArray.length) {
+      const randomIndex = Math.floor(Math.random() * positionsArray.length)
+      selectedIndices.add(randomIndex)
+    }
+
+    // Ajouter les positions sélectionnées au tableau des marqueurs
+    selectedIndices.forEach((index) => {
+      const [x, y, z] = positionsArray[index]
+      markerPositions.push(x, y, z)
+    })
+
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(markerPositions, 3))
+    return geometry
+  }, [landPositions])
 
 
   // Animation : rotation douce et continue du globe
@@ -101,7 +141,7 @@ export default function NewsGlobe() {
   })
 
   return (
-    <group ref={globeGroupRef}>
+    <group ref={globeGroupRef} position={[0, 0.15, 0]}>
       {/* Lumières */}
       <ambientLight intensity={0.5} />
       <pointLight position={[10, 10, 10]} intensity={1.5} color="#6366f1" />
@@ -114,14 +154,26 @@ export default function NewsGlobe() {
       </mesh>
 
       {/* Globe principal (points continents basés sur texture landmask) */}
-      <points ref={pointsRef}>
-        <bufferGeometry attach="geometry" {...globeGeometry} />
+      <points ref={pointsRef} geometry={globeGeometry}>
         <pointsMaterial
           attach="material"
           color="#38bdf8"  // Bleu Ciel (Sky-400)
           size={0.025}
           transparent
           opacity={0.85}
+          sizeAttenuation={true}
+        />
+      </points>
+
+      {/* Marqueurs rouges d'alerte (points aléatoires) */}
+      <points ref={markersRef}>
+        <bufferGeometry attach="geometry" {...markersGeometry} />
+        <pointsMaterial
+          attach="material"
+          color="#ff3300"  // Rouge vif
+          size={0.035}
+          transparent
+          opacity={1.0}
           sizeAttenuation={true}
         />
       </points>
