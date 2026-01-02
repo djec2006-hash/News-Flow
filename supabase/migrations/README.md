@@ -64,3 +64,4 @@ Configurez un cron job qui appelle votre URL avec le header Authorization.
 - La clé secrète doit être longue et aléatoire (générez-la avec `openssl rand -hex 32`)
 
 
+

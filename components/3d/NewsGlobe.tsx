@@ -20,10 +20,11 @@ export default function NewsGlobe() {
 
   // Générer les points du globe par échantillonnage de la texture landmask
   const { globeGeometry, landPositions } = useMemo(() => {
-    // Grille légèrement augmentée (~10%) : 277 méridiens x 140 parallèles = 38,780 points candidats
-    // Environ 9k-11k points valides sur les terres (30-45% de la surface)
-    const widthSegments = 277  // Méridiens (longitude) - Augmenté de 252 à 277 (+10%)
-    const heightSegments = 140  // Parallèles (latitude) - Augmenté de 127 à 140 (+10%)
+    // Grille haute densité (niveau supérieur) : 271 méridiens x 136 parallèles = 36,856 points candidats
+    // Environ 9k-14k points valides sur les terres (30-45% de la surface)
+    // Continents plus denses, plus blancs/bleus, avec une présence visuelle plus forte
+    const widthSegments = 271  // Méridiens (longitude) - Augmenté de 230 à 271 (+18%)
+    const heightSegments = 136  // Parallèles (latitude) - Augmenté de 115 à 136 (+18%)
 
     const positions: number[] = []
 
@@ -158,7 +159,7 @@ export default function NewsGlobe() {
         <pointsMaterial
           attach="material"
           color="#38bdf8"  // Bleu Ciel (Sky-400)
-          size={0.025}
+          size={0.020}
           transparent
           opacity={0.85}
           sizeAttenuation={true}
@@ -171,7 +172,7 @@ export default function NewsGlobe() {
         <pointsMaterial
           attach="material"
           color="#ff3300"  // Rouge vif
-          size={0.035}
+          size={0.025}
           transparent
           opacity={1.0}
           sizeAttenuation={true}

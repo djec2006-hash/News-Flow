@@ -4,7 +4,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Check, Sparkles, Zap, Shield, Target, Loader2 } from "lucide-react"
 import { motion, useScroll, useTransform, type Variants } from "framer-motion"
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 import dynamic from "next/dynamic"
 import Navbar from "@/components/layout/navbar"
 import Marquee from "@/components/ui/marquee"
@@ -215,10 +215,19 @@ export default function LandingPage() {
   const { toast } = useToast()
   const supabase = createClient()
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
+  const [showText, setShowText] = useState(false)
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"],
   })
+
+  // Séquence d'introduction : texte apparaît après 2 secondes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowText(true)
+    }, 2000)
+    return () => clearTimeout(timer)
+  }, [])
 
   // Gérer le checkout Stripe
   const handleCheckout = async (priceId: string, planId?: string) => {
@@ -339,54 +348,63 @@ export default function LandingPage() {
         <section className="relative min-h-screen flex items-center justify-center px-4 py-20 lg:py-24 xl:py-32">
           {/* Globe 3D en arrière-plan - Surveillance mondiale temps réel */}
           <div className="absolute inset-0 flex items-center justify-center opacity-50 -z-10">
-            <div className="w-full h-full max-w-5xl">
-              <Scene3DWrapper cameraPosition={[0, 0, 6.5]}>
-                <NewsGlobe />
-              </Scene3DWrapper>
+            <div className="relative w-full h-full max-w-5xl">
+              {/* Conteneur Globe avec animation immédiate */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, filter: "blur(8px)" }}
+                animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                transition={{ duration: 1, ease: "easeOut", delay: 0 }}
+                className="w-full h-full"
+              >
+                <Scene3DWrapper cameraPosition={[0, 0, 6.5]}>
+                  <NewsGlobe />
+                </Scene3DWrapper>
+              </motion.div>
             </div>
           </div>
 
+          {/* Conteneur texte - Apparition en cascade après 2 secondes */}
           <div className="max-w-5xl mx-auto text-center space-y-8">
             {/* Badge */}
-            <motion.div
-              variants={fadeInUp}
-              initial="hidden"
-              animate="visible"
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm px-4 py-2 text-sm text-zinc-400"
+            <div
+              className={`inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm px-4 py-2 text-sm text-zinc-400 transform transition-all duration-700 ease-out delay-0 ${
+                showText ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+              }`}
             >
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500" />
               </span>
               Intelligence Artificielle Propriétaire
-            </motion.div>
+            </div>
 
             {/* Titre principal - Animation mot par mot */}
-            <AnimatedTitle
-              text="L'information que vous cherchiez. Livrée avant même de la demander."
-              className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl font-bold tracking-tight leading-tight text-white"
-            />
+            <div
+              className={`transform transition-all duration-700 ease-out delay-0 ${
+                showText ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+              }`}
+            >
+              <AnimatedTitle
+                text="L'information que vous cherchiez. Livrée avant même de la demander."
+                className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl font-bold tracking-tight leading-tight text-white"
+              />
+            </div>
 
             {/* Sous-titre */}
-            <motion.p
-              variants={fadeInUp}
-              initial="hidden"
-              animate="visible"
-              transition={{ duration: 0.6, delay: 1 }}
-              className="text-lg md:text-xl text-zinc-300 max-w-2xl mx-auto leading-relaxed"
+            <p
+              className={`text-lg md:text-xl text-zinc-300 max-w-2xl mx-auto leading-relaxed transform transition-all duration-700 ease-out delay-200 ${
+                showText ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+              }`}
             >
               NewsFlow analyse des milliers de sources institutionnelles et synthétise l'essentiel. Chaque matin, dans
               votre boîte mail.
-            </motion.p>
+            </p>
 
             {/* CTA */}
-            <motion.div
-              variants={fadeInUp}
-              initial="hidden"
-              animate="visible"
-              transition={{ duration: 0.6, delay: 1.2 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4"
+            <div
+              className={`flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 transform transition-all duration-700 ease-out delay-500 ${
+                showText ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+              }`}
             >
               <div className="relative group">
                 {/* Glow douce derrière le bouton */}
@@ -410,7 +428,7 @@ export default function LandingPage() {
               >
                 <Link href="/how-it-works">Voir comment ça marche</Link>
               </Button>
-            </motion.div>
+            </div>
 
             {/* Social proof discret */}
             <motion.p

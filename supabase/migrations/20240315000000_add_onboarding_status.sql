@@ -14,3 +14,4 @@ ON profiles(has_seen_onboarding)
 WHERE has_seen_onboarding = false;
 
 
+
