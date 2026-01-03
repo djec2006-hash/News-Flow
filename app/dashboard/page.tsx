@@ -29,6 +29,8 @@ import { LiveFeed } from "@/components/dashboard/LiveFeed"
 const Scene3DWrapper = dynamic(() => import("@/components/3d/Scene3DWrapper"), { ssr: false })
 const StatShape = dynamic(() => import("@/components/3d/dashboard/StatShape"), { ssr: false })
 const NetworkVisual = dynamic(() => import("@/components/3d/dashboard/NetworkVisual"), { ssr: false })
+const NewsGlobe = dynamic(() => import("@/components/3d/NewsGlobe"), { ssr: false })
+const Particles = dynamic(() => import("@/components/ui/particles"), { ssr: false })
 
 // Variants pour animations
 const fadeIn: Variants = {
@@ -397,6 +399,11 @@ export default function DashboardPage() {
 
   return (
     <div className="relative min-h-screen bg-zinc-950 text-white">
+      {/* Particules flottantes en arrière-plan global */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <Particles />
+      </div>
+
       {/* Spotlight indigo en haut */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] pointer-events-none -z-10">
         <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/20 via-indigo-500/5 to-transparent blur-3xl" />
@@ -412,17 +419,16 @@ export default function DashboardPage() {
 
       {/* Contenu principal */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           {/* Colonne principale (2/3) */}
-          <div className="lg:col-span-2 space-y-12">
+          <div className="lg:col-span-2 flex flex-col gap-4">
         {/* Header */}
-        <motion.div initial="hidden" animate="visible" variants={fadeIn} className="mb-12 pb-8 border-b border-white/5">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white">
+        <motion.div initial="hidden" animate="visible" variants={fadeIn} className="mb-6">
+          <h1 className="text-2xl font-semibold text-white tracking-tight">
             Bonjour {profile?.full_name || "Elliot"}
           </h1>
-          <p className="text-lg text-zinc-400">
-            Bienvenue sur votre command center NewsFlow
-            {!supabaseEnabled && " (mode aperçu)"}
+          <p className="text-sm text-zinc-400 mt-1">
+            Bienvenue dans votre dashboard NewsFlow.
           </p>
         </motion.div>
 
@@ -448,7 +454,9 @@ export default function DashboardPage() {
 
                 <div className="relative z-10">
                   <div className="flex items-center gap-2 mb-4">
-                    <FileText className="h-4 w-4 text-zinc-500" />
+                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-cyan-400/10 border border-cyan-500/20">
+                      <FileText className="h-4 w-4 text-cyan-400" />
+                    </div>
                     <span className="text-sm font-medium text-zinc-400">Flows reçus</span>
                   </div>
                   <div className="text-4xl font-bold text-white mb-2">{flowCount}</div>
@@ -469,7 +477,9 @@ export default function DashboardPage() {
 
                 <div className="relative z-10">
                   <div className="flex items-center gap-2 mb-4">
-                    <Signal className="h-4 w-4 text-zinc-500" />
+                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-purple-400/10 border border-purple-500/20">
+                      <Signal className="h-4 w-4 text-purple-400" />
+                    </div>
                     <span className="text-sm font-medium text-zinc-400">Sources actives</span>
                   </div>
                   <div className="text-4xl font-bold text-white mb-2">142</div>
@@ -482,16 +492,18 @@ export default function DashboardPage() {
           {/* Colonne Droite (2/3) - Plan actuel large */}
           <motion.div variants={cardVariants} className="lg:col-span-2 h-full">
             <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-zinc-900/40 backdrop-blur-md p-6 hover:border-white/10 transition-all group h-full">
-              {/* 💎 Mini 3D scene - Prisme de Cristal */}
-              <div className="absolute top-4 right-4 w-20 h-20 opacity-60 group-hover:opacity-85 transition-opacity">
-                <Scene3DWrapper cameraPosition={[0, 0, 2.8]}>
-                  <StatShape type="crystal" />
+              {/* 🌍 Mini Globe 3D */}
+              <div className="absolute right-0 top-0 h-full w-1/2 opacity-80 pointer-events-none">
+                <Scene3DWrapper cameraPosition={[0, 0, 6.5]}>
+                  <NewsGlobe />
                 </Scene3DWrapper>
               </div>
 
               <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-4">
-                  <TrendingUp className="h-4 w-4 text-zinc-500" />
+                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-fuchsia-400/10 border border-fuchsia-500/20">
+                    <TrendingUp className="h-4 w-4 text-fuchsia-400" />
+                  </div>
                   <span className="text-sm font-medium text-zinc-400">Plan actuel</span>
                 </div>
                 <div className={`text-4xl font-bold mb-3 ${
@@ -564,7 +576,7 @@ export default function DashboardPage() {
           initial={{ opacity: 0, scaleX: 0.95 }}
           animate={{ opacity: 1, scaleX: 1 }}
           transition={{ duration: 0.5, delay: 0.5 }}
-          className="mb-12"
+          className="flex-1"
         >
           <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-zinc-900/40 backdrop-blur-md p-8">
             <div className="flex items-center gap-3 mb-6">
@@ -766,12 +778,12 @@ export default function DashboardPage() {
           </div>
 
           {/* Colonne latérale (1/3) - LiveFeed */}
-          <div className="lg:col-span-1 flex flex-col h-full">
+          <div className="lg:col-span-1 flex flex-col">
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.5 }}
-              className="sticky top-8 flex flex-col h-full"
+              className="flex flex-col h-full"
             >
               <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-zinc-900/40 backdrop-blur-md p-6 flex flex-col h-full">
                 <LiveFeed />

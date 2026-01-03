@@ -236,6 +236,7 @@ export default function PricingPage() {
         },
         body: JSON.stringify({
           priceId,
+          planId,
           couponId: appliedPromo?.couponId,
         }),
       })

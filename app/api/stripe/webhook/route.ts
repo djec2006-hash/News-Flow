@@ -33,27 +33,36 @@ export async function POST(req: Request) {
 
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session
-      const userId = session.client_reference_id
+      
+      // Récupérer userId depuis metadata (prioritaire) ou client_reference_id (fallback)
+      const userId = session.metadata?.userId || session.client_reference_id
+      const planType = session.metadata?.planType || "basic"
       const customerId = session.customer as string
+      const subscriptionId = session.subscription as string | undefined
 
-      if (userId) {
-        // 👇 ICI : ON VISE LA TABLE "profiles" (et plus "users")
-        const { error } = await supabaseAdmin
-          .from("profiles") 
-          .update({
-            subscription_status: "active",
-            stripe_customer_id: customerId,
-            // updated_at: new Date().toISOString(), // Décommente si tu as cette colonne
-          })
-          .eq("id", userId)
-
-        if (error) {
-          console.error("❌ Erreur Update Supabase:", error)
-          // On affiche l'erreur précise dans les logs Vercel
-          return new NextResponse(`Erreur BDD: ${error.message}`, { status: 500 })
-        }
-        console.log("✅ SUCCÈS : Profil mis à jour !")
+      if (!userId) {
+        console.error("❌ User ID manquant dans les metadata")
+        return new NextResponse("User ID missing in metadata", { status: 400 })
       }
+
+      console.log(`[Stripe Webhook] 📋 Mise à jour utilisateur ${userId} vers plan ${planType}`)
+
+      // Mettre à jour le profil avec le plan_type
+      const { error } = await supabaseAdmin
+        .from("profiles")
+        .update({
+          plan_type: planType,
+          stripe_customer_id: customerId,
+          stripe_subscription_id: subscriptionId,
+        })
+        .eq("id", userId)
+
+      if (error) {
+        console.error("❌ Erreur Update Supabase:", error)
+        return new NextResponse(`Erreur BDD: ${error.message}`, { status: 500 })
+      }
+
+      console.log(`✅ SUCCÈS : Profil ${userId} mis à jour vers plan ${planType}`)
     }
 
     return new NextResponse(null, { status: 200 })

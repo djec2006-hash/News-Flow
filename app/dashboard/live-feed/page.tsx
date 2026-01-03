@@ -29,7 +29,7 @@ type LiveFeedSettings = {
 export default function LiveFeedConfigPage() {
   const [settings, setSettings] = useState<LiveFeedSettings>({
     mode: "auto",
-    refresh_rate: 60,
+    refresh_rate: 900,
     allowed_domains: [],
     required_keywords: [],
   })
@@ -66,7 +66,7 @@ export default function LiveFeedConfigPage() {
       if (data) {
         setSettings({
           mode: (data.mode as "auto" | "custom") === "custom" ? "manual" : "auto",
-          refresh_rate: data.refresh_rate || 60,
+          refresh_rate: data.refresh_rate || 900,
           allowed_domains: data.custom_domains || [],
           required_keywords: data.custom_instructions
             ? data.custom_instructions.split(",").map((k: string) => k.trim()).filter(Boolean)

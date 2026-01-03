@@ -38,9 +38,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 })
     }
 
-    // Récupération du prix et du coupon
+    // Récupération du prix, du plan et du coupon
     const body = await request.json()
-    const { priceId, couponId } = body
+    const { priceId, planId, couponId } = body
 
     if (!priceId) {
       return NextResponse.json({ error: "Price ID manquant" }, { status: 400 })
@@ -105,6 +105,7 @@ export async function POST(request: Request) {
           coupon: couponId,
           metadata: {
             userId: user.id,
+            planType: planId || "basic",
           },
         })
 
@@ -137,6 +138,7 @@ export async function POST(request: Request) {
       client_reference_id: user.id,
       metadata: {
         userId: user.id,
+        planType: planId || "basic", // Plan type (basic, pro)
       },
     }
 
