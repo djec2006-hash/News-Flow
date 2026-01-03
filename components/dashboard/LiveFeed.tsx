@@ -38,6 +38,8 @@ export function LiveFeed() {
 
   // Définition de loadNews AVANT les useEffect qui l'utilisent
   const loadNews = useCallback(async (isRefresh = false) => {
+    console.log("[LiveFeed] Chargement des news...", { isRefresh })
+    
     if (isRefresh) {
       setRefreshing(true)
     } else {
@@ -51,20 +53,70 @@ export function LiveFeed() {
         data: { user },
       } = await supabase.auth.getUser()
 
+      console.log("[LiveFeed] Utilisateur récupéré:", user?.id || "non connecté")
+
       const items = await getLiveNews(user?.id)
+      console.log("[LiveFeed] News récupérées:", items?.length || 0, "articles")
       
-      if (isRefresh) {
-        // Mode refresh : ajouter les nouveaux articles (le Context gère les doublons)
-        addNews(items)
+      if (!items || items.length === 0) {
+        console.warn("[LiveFeed] Aucune news récupérée, utilisation des données de secours")
+        // Données de secours si aucune news n'est récupérée
+        const fallbackItems: LiveNewsItem[] = [
+          {
+            url: "https://newsflow.app",
+            title: "Bienvenue sur NewsFlow",
+            source: "NewsFlow",
+            published_date: new Date().toISOString(),
+            snippet: "Votre flux d'actualités personnalisé se charge...",
+          },
+        ]
+        
+        if (isRefresh) {
+          addNews(fallbackItems)
+        } else {
+          if (news.length === 0) {
+            addNews(fallbackItems)
+          }
+        }
       } else {
-        // Premier chargement : seulement si la liste est vide
-        if (news.length === 0) {
+        if (isRefresh) {
+          // Mode refresh : ajouter les nouveaux articles (le Context gère les doublons)
           addNews(items)
+        } else {
+          // Premier chargement : seulement si la liste est vide
+          if (news.length === 0) {
+            addNews(items)
+          }
         }
       }
     } catch (error) {
-      console.error("Failed to load live news:", error)
+      console.error("[LiveFeed] Erreur lors du chargement des news:", error)
+      
+      // Données de secours en cas d'erreur
+      const fallbackItems: LiveNewsItem[] = [
+        {
+          url: "https://newsflow.app",
+          title: "Erreur de connexion",
+          source: "NewsFlow",
+          published_date: new Date().toISOString(),
+          snippet: "Impossible de charger les actualités. Tentative de reconnexion en cours...",
+        },
+        {
+          url: "https://newsflow.app",
+          title: "Vérifiez votre connexion",
+          source: "NewsFlow",
+          published_date: new Date().toISOString(),
+          snippet: "Assurez-vous d'être connecté à Internet et réessayez.",
+        },
+      ]
+      
+      // Ajouter les données de secours seulement si la liste est vide
+      if (news.length === 0) {
+        addNews(fallbackItems)
+      }
     } finally {
+      // CRUCIAL : On arrête le chargement quoi qu'il arrive
+      console.log("[LiveFeed] Fin du chargement")
       if (isRefresh) {
         setRefreshing(false)
       } else {
@@ -187,6 +239,7 @@ export function LiveFeed() {
 
   useEffect(() => {
     if (isMounted) {
+      console.log("[LiveFeed] useEffect: Appel de loadNews au montage")
       loadNews()
     }
   }, [isMounted, loadNews])
