@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { createProject, updateProject } from "@/app/actions/projects"
+// J'ai supprimé l'import qui causait le crash : import { createProject, updateProject } from "@/app/actions/projects"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -19,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Edit, ChevronUp, ChevronDown, AlertCircle, Sparkles } from "lucide-react"
+import { Plus, Edit, ChevronUp, ChevronDown, AlertCircle, Sparkles, Loader2 } from "lucide-react"
 import { getPlanConfig } from "@/lib/plans"
 import { useToast } from "@/components/ui/use-toast"
 import { motion } from "framer-motion"
@@ -31,7 +32,7 @@ type CustomTopic = {
   domain: string
   description: string | null
   instructions: string
-  priority: string
+  priority?: string
   is_active: boolean
   created_at: string
   last_interaction_at: string | null
@@ -46,35 +47,27 @@ type Profile = {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🎨 TÂCHE 1 : SYSTÈME DE THÈMES COULEURS PAR DOMAINE
+// 🎨 SYSTÈME DE THÈMES (Conservé tel quel car très propre)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 type ThemeColors = {
-  // Couleurs principales
-  primary: string        // Couleur Tailwind (ex: "cyan")
-  // Bordures
-  border: string         // border-{color}-500/50
-  borderHover: string    // hover:border-{color}-400
-  borderFocus: string    // focus:border-{color}-500
-  // Backgrounds
-  bgCard: string         // bg-{color}-500/5
-  bgBadge: string        // bg-{color}-500/10
-  bgButton: string       // Gradient pour boutons
-  bgButtonHover: string  // Gradient hover
-  // Glows et shadows
-  glow: string           // shadow-{color}-500/20
-  glowStrong: string     // shadow-{color}-500/40
-  // Textes
-  text: string           // text-{color}-400
-  textLight: string      // text-{color}-300
-  // Ring
-  ring: string           // ring-{color}-500/50
-  // Switch
-  switchOn: string       // data-[state=checked]:bg-{color}-500
+  primary: string
+  border: string
+  borderHover: string
+  borderFocus: string
+  bgCard: string
+  bgBadge: string
+  bgButton: string
+  bgButtonHover: string
+  glow: string
+  glowStrong: string
+  text: string
+  textLight: string
+  ring: string
+  switchOn: string
 }
 
 const PROJECT_THEMES: Record<string, ThemeColors> = {
-  // Finance & Marchés - CYAN/BLEU (Trading futuriste)
   finance: {
     primary: "cyan",
     border: "border-cyan-500/50",
@@ -91,7 +84,6 @@ const PROJECT_THEMES: Record<string, ThemeColors> = {
     ring: "ring-cyan-500/50",
     switchOn: "data-[state=checked]:bg-cyan-500",
   },
-  // Économie & Macro - EMERALD/VERT (Croissance)
   economics: {
     primary: "emerald",
     border: "border-emerald-500/50",
@@ -108,7 +100,6 @@ const PROJECT_THEMES: Record<string, ThemeColors> = {
     ring: "ring-emerald-500/50",
     switchOn: "data-[state=checked]:bg-emerald-500",
   },
-  // Géopolitique & Conflits - ROSE/ROUGE (Alerte)
   geopolitics: {
     primary: "rose",
     border: "border-rose-500/50",
@@ -125,7 +116,6 @@ const PROJECT_THEMES: Record<string, ThemeColors> = {
     ring: "ring-rose-500/50",
     switchOn: "data-[state=checked]:bg-rose-500",
   },
-  // Politique & Société - ORANGE/AMBER (Débat)
   politics_society: {
     primary: "orange",
     border: "border-orange-500/50",
@@ -142,7 +132,6 @@ const PROJECT_THEMES: Record<string, ThemeColors> = {
     ring: "ring-orange-500/50",
     switchOn: "data-[state=checked]:bg-orange-500",
   },
-  // Technologie & Innovation - VIOLET/PURPLE (Futuriste)
   tech_innovation: {
     primary: "violet",
     border: "border-violet-500/50",
@@ -159,7 +148,6 @@ const PROJECT_THEMES: Record<string, ThemeColors> = {
     ring: "ring-violet-500/50",
     switchOn: "data-[state=checked]:bg-violet-500",
   },
-  // Environnement & Climat - TEAL/VERT-BLEU (Nature)
   environment_climate: {
     primary: "teal",
     border: "border-teal-500/50",
@@ -176,7 +164,6 @@ const PROJECT_THEMES: Record<string, ThemeColors> = {
     ring: "ring-teal-500/50",
     switchOn: "data-[state=checked]:bg-teal-500",
   },
-  // Santé & Sciences - BLUE/SKY (Confiance)
   health_science: {
     primary: "sky",
     border: "border-sky-500/50",
@@ -193,7 +180,6 @@ const PROJECT_THEMES: Record<string, ThemeColors> = {
     ring: "ring-sky-500/50",
     switchOn: "data-[state=checked]:bg-sky-500",
   },
-  // Culture, Médias & Sport - FUCHSIA/PINK (Divertissement)
   culture_media_sport: {
     primary: "fuchsia",
     border: "border-fuchsia-500/50",
@@ -210,7 +196,6 @@ const PROJECT_THEMES: Record<string, ThemeColors> = {
     ring: "ring-fuchsia-500/50",
     switchOn: "data-[state=checked]:bg-fuchsia-500",
   },
-  // Autre - INDIGO/SLATE (Neutre mais élégant)
   other: {
     primary: "indigo",
     border: "border-indigo-500/50",
@@ -229,7 +214,6 @@ const PROJECT_THEMES: Record<string, ThemeColors> = {
   },
 }
 
-// Legacy domain mapping (pour les anciens domaines)
 const LEGACY_DOMAIN_MAP: Record<string, string> = {
   crypto: "finance",
   forex: "finance",
@@ -242,9 +226,7 @@ const LEGACY_DOMAIN_MAP: Record<string, string> = {
   autre: "other",
 }
 
-// Fonction pour obtenir le thème d'un domaine
 function getProjectTheme(domain: string): ThemeColors {
-  // Vérifier si c'est un ancien domaine
   const mappedDomain = LEGACY_DOMAIN_MAP[domain] || domain
   return PROJECT_THEMES[mappedDomain] || PROJECT_THEMES.other
 }
@@ -278,7 +260,6 @@ const LENGTH_OPTIONS = [
 ]
 
 function getComplexityBadgeStyle(complexity: string) {
-  // Style néon sobre selon la valeur de difficulté
   if (complexity === "expert" || complexity === "advanced") {
     return "bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/30"
   }
@@ -288,12 +269,10 @@ function getComplexityBadgeStyle(complexity: string) {
   if (complexity === "very_simple") {
     return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
   }
-  // Par défaut
   return "bg-zinc-700/50 text-zinc-400 border border-zinc-600/50"
 }
 
 function getLengthBadgeStyle(length: string) {
-  // Style néon sobre selon la valeur de longueur
   if (length === "very_detailed") {
     return "bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/30"
   }
@@ -303,11 +282,9 @@ function getLengthBadgeStyle(length: string) {
   if (length === "very_short" || length === "short") {
     return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
   }
-  // Par défaut
   return "bg-zinc-700/50 text-zinc-400 border border-zinc-600/50"
 }
 
-// Fonctions pour les couleurs conditionnelles des sélecteurs
 function getComplexityItemClass(value: string, selectedValue: string): string {
   const isSelected = value === selectedValue
   const baseClasses = "cursor-pointer transition-colors"
@@ -316,7 +293,6 @@ function getComplexityItemClass(value: string, selectedValue: string): string {
     return `${baseClasses} text-zinc-400 bg-zinc-800 hover:bg-zinc-700 hover:text-white data-[highlighted]:bg-zinc-700 data-[highlighted]:text-white`
   }
   
-  // Couleurs selon la valeur sélectionnée
   if (value === "standard") {
     return `${baseClasses} bg-blue-600 text-white data-[highlighted]:bg-blue-700`
   }
@@ -324,7 +300,6 @@ function getComplexityItemClass(value: string, selectedValue: string): string {
     return `${baseClasses} bg-orange-600 text-white data-[highlighted]:bg-orange-700`
   }
   
-  // Par défaut, gris pour les autres valeurs
   return `${baseClasses} bg-zinc-700 text-white data-[highlighted]:bg-zinc-600`
 }
 
@@ -336,7 +311,6 @@ function getLengthItemClass(value: string, selectedValue: string): string {
     return `${baseClasses} text-zinc-400 bg-zinc-800 hover:bg-zinc-700 hover:text-white data-[highlighted]:bg-zinc-700 data-[highlighted]:text-white`
   }
   
-  // Couleurs selon la valeur sélectionnée
   if (value === "very_short" || value === "short") {
     return `${baseClasses} bg-emerald-600 text-white data-[highlighted]:bg-emerald-700`
   }
@@ -347,7 +321,6 @@ function getLengthItemClass(value: string, selectedValue: string): string {
     return `${baseClasses} bg-purple-600 text-white data-[highlighted]:bg-purple-700`
   }
   
-  // Par défaut
   return `${baseClasses} bg-zinc-700 text-white data-[highlighted]:bg-zinc-600`
 }
 
@@ -374,19 +347,6 @@ function getLengthTriggerClass(selectedValue: string): string {
   return "h-11 bg-zinc-900/50 border border-white/10 text-white hover:border-white/20 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all duration-200"
 }
 
-// Fonction helper pour le sélecteur de langue (si ajouté plus tard)
-function getLanguageItemClass(value: string, selectedValue: string): string {
-  const isSelected = value === selectedValue
-  const baseClasses = "cursor-pointer transition-colors"
-  
-  if (!isSelected) {
-    return `${baseClasses} text-zinc-400 bg-zinc-800 hover:bg-zinc-700 hover:text-white data-[highlighted]:bg-zinc-700 data-[highlighted]:text-white`
-  }
-  
-  // Indigo pour la langue sélectionnée
-  return `${baseClasses} bg-indigo-600 text-white data-[highlighted]:bg-indigo-700`
-}
-
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<CustomTopic[]>([])
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -409,9 +369,9 @@ export default function ProjectsPage() {
   })
 
   const { toast } = useToast()
+  const router = useRouter()
   const supabase = createClient()
 
-  // Thème actif pour la modale (basé sur le domaine sélectionné)
   const activeTheme = getProjectTheme(formData.domain || "other")
 
   useEffect(() => {
@@ -421,12 +381,7 @@ export default function ProjectsPage() {
   const fetchData = async () => {
     try {
       setError(null)
-
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
-
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
       if (userError) throw userError
       if (!user) {
         setError("Utilisateur non connecté")
@@ -520,6 +475,7 @@ export default function ProjectsPage() {
     return Object.keys(errors).length === 0
   }
 
+  // 🔴 C'EST ICI QUE J'AI REFAIT LA LOGIQUE POUR QU'ELLE MARCHE SANS FICHIER EXTERNE
   const handleSaveProject = async () => {
     if (!validateForm()) {
       toast({
@@ -534,23 +490,8 @@ export default function ProjectsPage() {
     setSaving(true)
 
     try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
-
-      if (userError) throw userError
-      if (!user) throw new Error("Utilisateur non connecté")
-
-      if (!editingProject && !canAddProject) {
-        toast({
-          title: "Limite atteinte",
-          description: `Tu as atteint la limite de ${maxProjects} projets pour ton plan ${planConfig.label}`,
-          variant: "destructive",
-        })
-        setSaving(false)
-        return
-      }
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError || !user) throw new Error("Utilisateur non connecté")
 
       let instructions = formData.instructions.trim()
       if (!instructions) {
@@ -559,67 +500,68 @@ export default function ProjectsPage() {
       }
 
       const projectData = {
-        user_id: user.id,
         title: formData.title.trim(),
         domain: formData.domain,
         description: formData.description.trim() || null,
         instructions,
-        priority: "normal",
-        complexity_level: formData.complexity_level,
-        length_level: formData.length_level,
+        complexity_level: formData.complexity_level || "standard",
+        length_level: formData.length_level || "standard",
         is_active: formData.is_active,
       }
 
       if (editingProject) {
-        const result = await updateProject(editingProject.id, {
-          title: projectData.title,
-          domain: projectData.domain,
-          description: projectData.description,
-          instructions: projectData.instructions,
-          complexity_level: projectData.complexity_level,
-          length_level: projectData.length_level,
-          is_active: projectData.is_active,
-        })
+        // MISE À JOUR
+        const { error: updateError } = await supabase
+          .from("custom_topics")
+          .update(projectData)
+          .eq("id", editingProject.id)
+          .eq("user_id", user.id)
 
-        if (!result.success) throw new Error(result.message)
+        if (updateError) throw updateError
 
-        toast({
-          title: "✅ Projet modifié",
-          description: "Le projet a été mis à jour avec succès",
-        })
+        toast({ title: "✅ Projet modifié", description: "Le projet a été mis à jour avec succès" })
       } else {
-        const result = await createProject({
-          title: projectData.title,
-          domain: projectData.domain,
-          description: projectData.description,
-          instructions: projectData.instructions,
-          complexity_level: projectData.complexity_level,
-          length_level: projectData.length_level,
-          is_active: projectData.is_active,
-        })
-
-        if (!result.success) {
-          if (result.error === "LIMIT_REACHED") {
-            toast({
-              title: "❌ Limite atteinte",
-              description: result.message,
-              variant: "destructive",
-            })
-            setDialogOpen(false)
-            return
-          }
-          throw new Error(result.message)
+        // CRÉATION
+        if (!canAddProject) {
+          throw new Error("Limite de projets atteinte")
         }
 
-        toast({
-          title: "✅ Projet créé",
-          description: "Le nouveau projet a été ajouté avec succès",
-        })
+        // Calculer la nouvelle position
+        const nextPosition = projects.length > 0 
+          ? Math.max(...projects.map(p => p.position)) + 1 
+          : 1
+
+        const { error: insertError } = await supabase
+          .from("custom_topics")
+          .insert({
+            user_id: user.id,
+            position: nextPosition,
+            ...projectData
+          })
+
+        if (insertError) throw insertError
+
+        toast({ title: "✅ Projet créé", description: "Le nouveau projet a été ajouté avec succès" })
       }
 
       setDialogOpen(false)
+      setEditingProject(null)
+      
+      setFormData({
+        domain: "",
+        title: "",
+        description: "",
+        instructions: "",
+        complexity_level: "standard",
+        length_level: "standard",
+        is_active: true,
+      })
+      
       await fetchData()
+      router.refresh()
+
     } catch (error) {
+      console.error("Erreur sauvegarde:", error)
       const errorMessage = error instanceof Error ? error.message : "Impossible de sauvegarder le projet"
       toast({
         title: "Erreur",
@@ -743,7 +685,7 @@ export default function ProjectsPage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-white p-8">
       {/* ═══════════════════════════════════════════════════════════════════════════
-          MODALE D'ÉDITION - DESIGN PROFESSIONNEL & LISIBLE
+          MODALE D'ÉDITION
           ═══════════════════════════════════════════════════════════════════════════ */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent 
@@ -1077,9 +1019,6 @@ export default function ProjectsPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
                 >
-                  {/* ═══════════════════════════════════════════════════════════
-                      CARTE DE PROJET - STYLE DARK MODE NEUTRE
-                      ═══════════════════════════════════════════════════════════ */}
                   <Card
                     className={`
                       relative overflow-hidden
@@ -1094,7 +1033,6 @@ export default function ProjectsPage() {
                     
                     <CardHeader className="relative pb-3">
                       <div className="flex items-start gap-3">
-                        {/* Icône du domaine - sans fond coloré */}
                         <div className="text-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
                           {getDomainIcon(project.domain)}
                         </div>
@@ -1109,7 +1047,6 @@ export default function ProjectsPage() {
                         </div>
                       </div>
                       
-                      {/* Badges de complexité et longueur */}
                       <div className="flex flex-wrap gap-2 mt-4">
                         <Badge 
                           variant="outline" 
@@ -1126,7 +1063,6 @@ export default function ProjectsPage() {
                       </div>
                     </CardHeader>
                     
-                    {/* Description et Instructions */}
                     {(project.description || project.instructions) && (
                       <CardContent className="relative space-y-3 pt-0">
                         {project.description && (
@@ -1144,7 +1080,6 @@ export default function ProjectsPage() {
                       </CardContent>
                     )}
                     
-                    {/* Actions */}
                     <CardContent className={`
                       relative pt-4 flex items-center justify-between 
                       border-t border-zinc-800
@@ -1180,7 +1115,6 @@ export default function ProjectsPage() {
                         </Button>
                       </div>
                       
-                      {/* Switch néon indigo */}
                       <Switch
                         checked={project.is_active}
                         onCheckedChange={(checked) => toggleProjectActive(project.id, checked)}

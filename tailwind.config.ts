@@ -20,7 +20,10 @@ const config: Config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    require("@tailwindcss/typography"), // C'est ici qu'on ajoute le plugin nécessaire
+  ],
 }
 
 export default config

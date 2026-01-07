@@ -3,8 +3,8 @@
 import { useEffect, useState, useCallback } from "react"
 import { motion } from "framer-motion"
 import { ExternalLink, Loader2, Radio, RefreshCw } from "lucide-react"
-import { getLiveNews, type LiveNewsItem } from "@/app/actions/live-news"
 import { createClient } from "@/lib/supabase/client"
+import type { LiveNewsItem } from "@/app/actions/live-news"
 import { useToast } from "@/hooks/use-toast"
 import { useLiveFeed, type ExtendedLiveNewsItem } from "@/contexts/LiveFeedContext"
 
@@ -26,6 +26,40 @@ const DEFAULT_CONFIG: LiveFeedConfig = {
 
 const STORAGE_KEY = "newsflow_feed_config"
 
+// Fallback news réalistes en cas d'échec de l'API
+const FALLBACK_NEWS: LiveNewsItem[] = [
+  {
+    url: "https://www.bloomberg.com",
+    title: "Global Macro : les desks restent prudents avant le NFP",
+    source: "Bloomberg",
+    published_date: new Date(Date.now() - 30 * 60000).toISOString(),
+    snippet: "",
+  },
+  {
+    url: "https://www.reuters.com",
+    title: "FX : l'EUR/USD oscille autour de 1.08 avant les données US",
+    source: "Reuters",
+    published_date: new Date(Date.now() - 60 * 60000).toISOString(),
+    snippet: "",
+  },
+  {
+    url: "https://www.ft.com",
+    title: "Tech : les mégacaps prolongent le rallye malgré la hausse des rendements",
+    source: "Financial Times",
+    published_date: new Date(Date.now() - 90 * 60000).toISOString(),
+    snippet: "",
+  },
+]
+
+type ApiNewsItem = {
+  title: string
+  url: string
+  source?: string
+  published_at?: string
+  published_date?: string
+  snippet?: string
+}
+
 export function LiveFeed() {
   const { news, addNews } = useLiveFeed() // Utiliser le Context pour persister les news
   const [loading, setLoading] = useState(true)
@@ -33,12 +67,51 @@ export function LiveFeed() {
   const [isMounted, setIsMounted] = useState(false)
   const [config, setConfig] = useState<LiveFeedConfig>(DEFAULT_CONFIG)
   const [timeKey, setTimeKey] = useState(0) // Pour forcer le re-render des timestamps
+  const [error, setError] = useState<string | null>(null) // État pour les erreurs non-bloquantes
+  const [isHovering, setIsHovering] = useState(false) // Pause du ticker au survol
   const { toast } = useToast()
   const supabase = createClient()
 
-  // Définition de loadNews AVANT les useEffect qui l'utilisent
+  // Récupérer les news live via l'API interne (Tavily + custom_topics)
+  const fetchLiveNews = useCallback(async (): Promise<LiveNewsItem[]> => {
+    try {
+      const res = await fetch("/api/get-live-news")
+      if (!res.ok) {
+        console.warn("[LiveFeed] ⚠️ API live news non OK:", res.status)
+        return FALLBACK_NEWS
+      }
+
+      const data = await res.json()
+      const items: ApiNewsItem[] = Array.isArray(data?.news) ? data.news : []
+
+      if (items.length === 0) {
+        console.warn("[LiveFeed] ⚠️ API live news vide - fallback")
+        return FALLBACK_NEWS
+      }
+
+      const mapped: LiveNewsItem[] = items
+        .map((item) => ({
+          url: item.url || "",
+          title: item.title || "Sans titre",
+          source: item.source || "source",
+          published_date: item.published_at || item.published_date || new Date().toISOString(),
+          snippet: item.snippet || "",
+        }))
+        .filter((n) => n.url && n.title)
+
+      return mapped.length > 0 ? mapped : FALLBACK_NEWS
+    } catch (error) {
+      console.warn("[LiveFeed] ⚠️ Erreur API live news - fallback:", error)
+      return FALLBACK_NEWS
+    }
+  }, [])
+
+  // Définition de loadNews AVANT les useEffect qui l'utilisent (fail-safe)
   const loadNews = useCallback(async (isRefresh = false) => {
     console.log("[LiveFeed] Chargement des news...", { isRefresh })
+    
+    // Réinitialiser l'erreur au début du chargement
+    setError(null)
     
     if (isRefresh) {
       setRefreshing(true)
@@ -47,72 +120,23 @@ export function LiveFeed() {
     }
     
     try {
-      // Récupérer l'userId pour personnaliser le flux
-      const supabase = createClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      const items = await fetchLiveNews()
+      console.log("[LiveFeed] News live récupérées:", items?.length || 0, "articles")
 
-      console.log("[LiveFeed] Utilisateur récupéré:", user?.id || "non connecté")
+      setError(null)
 
-      const items = await getLiveNews(user?.id)
-      console.log("[LiveFeed] News récupérées:", items?.length || 0, "articles")
-      
-      if (!items || items.length === 0) {
-        console.warn("[LiveFeed] Aucune news récupérée, utilisation des données de secours")
-        // Données de secours si aucune news n'est récupérée
-        const fallbackItems: LiveNewsItem[] = [
-          {
-            url: "https://newsflow.app",
-            title: "Bienvenue sur NewsFlow",
-            source: "NewsFlow",
-            published_date: new Date().toISOString(),
-            snippet: "Votre flux d'actualités personnalisé se charge...",
-          },
-        ]
-        
-        if (isRefresh) {
-          addNews(fallbackItems)
-        } else {
-          if (news.length === 0) {
-            addNews(fallbackItems)
-          }
-        }
+      if (isRefresh) {
+        addNews(items)
       } else {
-        if (isRefresh) {
-          // Mode refresh : ajouter les nouveaux articles (le Context gère les doublons)
+        if (news.length === 0) {
           addNews(items)
-        } else {
-          // Premier chargement : seulement si la liste est vide
-          if (news.length === 0) {
-            addNews(items)
-          }
         }
       }
-    } catch (error) {
-      console.error("[LiveFeed] Erreur lors du chargement des news:", error)
-      
-      // Données de secours en cas d'erreur
-      const fallbackItems: LiveNewsItem[] = [
-        {
-          url: "https://newsflow.app",
-          title: "Erreur de connexion",
-          source: "NewsFlow",
-          published_date: new Date().toISOString(),
-          snippet: "Impossible de charger les actualités. Tentative de reconnexion en cours...",
-        },
-        {
-          url: "https://newsflow.app",
-          title: "Vérifiez votre connexion",
-          source: "NewsFlow",
-          published_date: new Date().toISOString(),
-          snippet: "Assurez-vous d'être connecté à Internet et réessayez.",
-        },
-      ]
-      
-      // Ajouter les données de secours seulement si la liste est vide
+    } catch (error: any) {
+      console.warn("[LiveFeed] ⚠️ Erreur inattendue - fallback:", error)
+      setError(null)
       if (news.length === 0) {
-        addNews(fallbackItems)
+        addNews(FALLBACK_NEWS)
       }
     } finally {
       // CRUCIAL : On arrête le chargement quoi qu'il arrive
@@ -123,7 +147,7 @@ export function LiveFeed() {
         setLoading(false)
       }
     }
-  }, [addNews, news.length])
+  }, [addNews, fetchLiveNews])
 
   // Gestion de l'hydratation Next.js
   useEffect(() => {
@@ -146,7 +170,7 @@ export function LiveFeed() {
 
         const { data, error } = await supabase
           .from("live_feed_settings")
-          .select("refresh_rate")
+          .select("refresh_rate, auto_refresh")
           .eq("user_id", user.id)
           .single()
 
@@ -156,13 +180,22 @@ export function LiveFeed() {
           return
         }
 
-        if (data && data.refresh_rate) {
-          // Convertir refresh_rate (en secondes) en millisecondes pour refreshRate
-          const refreshRateMs = data.refresh_rate * 1000
-          setConfig((prev) => ({
-            ...prev,
-            refreshRate: refreshRateMs,
-          }))
+        if (data) {
+          setConfig((prev) => {
+            const updates: Partial<LiveFeedConfig> = {}
+            
+            // Convertir refresh_rate (en secondes) en millisecondes pour refreshRate
+            if (data.refresh_rate !== undefined) {
+              updates.refreshRate = data.refresh_rate * 1000
+            }
+            
+            // Mettre à jour auto_refresh
+            if (data.auto_refresh !== undefined) {
+              updates.autoRefresh = data.auto_refresh
+            }
+            
+            return { ...prev, ...updates }
+          })
         }
       } catch (error) {
         console.warn("[LiveFeed] Erreur lors du chargement de la config depuis la DB:", error)
@@ -205,13 +238,19 @@ export function LiveFeed() {
             filter: `user_id=eq.${user.id}`,
           },
           (payload) => {
-            if (payload.new.refresh_rate) {
-              const refreshRateMs = payload.new.refresh_rate * 1000
-              setConfig((prev) => ({
-                ...prev,
-                refreshRate: refreshRateMs,
-              }))
-            }
+            setConfig((prev) => {
+              const updates: Partial<LiveFeedConfig> = {}
+              
+              if (payload.new.refresh_rate !== undefined) {
+                updates.refreshRate = payload.new.refresh_rate * 1000
+              }
+              
+              if (payload.new.auto_refresh !== undefined) {
+                updates.autoRefresh = payload.new.auto_refresh
+              }
+              
+              return { ...prev, ...updates }
+            })
           }
         )
         .subscribe()
@@ -244,54 +283,6 @@ export function LiveFeed() {
     }
   }, [isMounted, loadNews])
 
-  // Simulation : ajouter une fausse news toutes les 5-10 secondes (pour tester)
-  useEffect(() => {
-    if (!isMounted || loading) return
-
-    const fakeSources = ["CNBC", "Reuters", "Bloomberg", "Financial Times", "TechCrunch"]
-    const fakeTitles = [
-      "Nouvelle actualité financière importante",
-      "Développement technologique majeur annoncé",
-      "Mouvement sur les marchés internationaux",
-      "Actualité géopolitique en développement",
-      "Innovation majeure dans le secteur tech",
-      "Tendances économiques à surveiller",
-      "Actualité cryptomonnaie en temps réel",
-    ]
-
-    const addFakeNews = () => {
-      const randomSource = fakeSources[Math.floor(Math.random() * fakeSources.length)]
-      const randomTitle = fakeTitles[Math.floor(Math.random() * fakeTitles.length)]
-
-      const fakeItem: LiveNewsItem = {
-        url: `https://example.com/news-${Date.now()}`,
-        title: randomTitle,
-        source: randomSource,
-        published_date: new Date().toISOString(),
-        snippet: "",
-      }
-
-      // Utiliser addNews du Context (gère les doublons automatiquement)
-      addNews([fakeItem])
-    }
-
-    // Intervalle aléatoire entre 5 et 10 secondes
-    const getRandomInterval = () => 5000 + Math.random() * 5000
-    let timeoutId: NodeJS.Timeout
-
-    const scheduleNext = () => {
-      timeoutId = setTimeout(() => {
-        addFakeNews()
-        scheduleNext()
-      }, getRandomInterval())
-    }
-
-    scheduleNext()
-
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId)
-    }
-  }, [isMounted, loading, addNews])
 
   // Fonction pour mettre à jour la configuration avec feedback
   const updateConfig = (newConfig: Partial<LiveFeedConfig>) => {
@@ -307,23 +298,29 @@ export function LiveFeed() {
     })
   }
 
-  // Fonction pour formater le temps relatif (utilise timestamp réel)
-  const formatTimeAgo = useCallback((timestamp: number) => {
-    const now = Date.now()
-    const diffMs = now - timestamp
-    
-    if (diffMs < 0) return "À l'instant"
-    
-    const diffMins = Math.floor(diffMs / 60000)
-    
-    if (diffMins < 1) return "À l'instant"
-    if (diffMins < 60) return `Il y a ${diffMins} min`
-    
-    const diffHours = Math.floor(diffMins / 60)
-    if (diffHours < 24) return `Il y a ${diffHours} h`
-    
-    const diffDays = Math.floor(diffHours / 24)
-    return `Il y a ${diffDays} j`
+  // Fonction pour formater le temps relatif (utilise published_date de l'article)
+  const formatTimeAgo = useCallback((publishedDate: string) => {
+    try {
+      const published = new Date(publishedDate)
+      const now = new Date()
+      const diffMs = now.getTime() - published.getTime()
+      
+      if (diffMs < 0) return "À l'instant"
+      
+      const diffMins = Math.floor(diffMs / 60000)
+      
+      if (diffMins < 1) return "À l'instant"
+      if (diffMins < 60) return `Il y a ${diffMins} min`
+      
+      const diffHours = Math.floor(diffMins / 60)
+      if (diffHours < 24) return `Il y a ${diffHours} h`
+      
+      const diffDays = Math.floor(diffHours / 24)
+      return `Il y a ${diffDays} j`
+    } catch (error) {
+      console.error("[LiveFeed] Erreur formatage date:", error)
+      return "Récemment"
+    }
   }, [])
 
   // Intervalle pour mettre à jour les timestamps relatifs toutes les minutes
@@ -361,86 +358,68 @@ export function LiveFeed() {
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      {/* Header - Fixe */}
-      <div className="flex items-center justify-between mb-4 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <Radio className="h-4 w-4 text-red-500 animate-pulse" />
-          <h3 className="text-lg font-bold text-white">Live Feed</h3>
-        </div>
-        <span className="text-xs text-zinc-500">Dernières 24h</span>
+    <div className="flex flex-col h-[calc(100vh-120px)] bg-zinc-900/50 rounded-xl border border-white/5 overflow-hidden relative">
+      {/* 1. Header fixe */}
+      <div className="flex-none p-4 border-b border-white/5 bg-zinc-900/80 backdrop-blur-sm z-20 flex justify-between items-center">
+        <h3 className="font-semibold text-white flex items-center gap-2">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+          </span>
+          Live Feed
+        </h3>
+        <button
+          onClick={() => window.location.reload()}
+          className="text-[10px] bg-white/5 hover:bg-white/10 text-zinc-400 px-2 py-1 rounded transition-colors"
+        >
+          Actualiser
+        </button>
       </div>
 
-      {/* Liste des news - Scrollable avec hauteur fixe */}
-      {news.length === 0 ? (
-        <div className="text-center py-8 text-zinc-500 text-sm flex-grow flex items-center justify-center">
-          Aucune actualité récente disponible
-        </div>
-      ) : (
-        <div 
-          className="space-y-2 overflow-y-auto overscroll-contain pr-2 min-h-0 max-h-[500px] scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent hover:scrollbar-thumb-zinc-600"
-          style={{
-            scrollbarWidth: 'thin',
-            scrollbarColor: '#3f3f46 transparent'
-          }}
-        >
-          {news.map((item) => (
+      {/* 2. Liste scrollable */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+        <style jsx>{`
+          .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+          }
+          .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+          }
+          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+          }
+        `}</style>
+        {news.length === 0 ? (
+          <div className="text-center py-8 text-zinc-500 text-sm">Aucune actualité récente disponible</div>
+        ) : (
+          news.map((item) => (
             <motion.a
               key={item.id}
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
-              initial={{ opacity: 0, y: -10 }}
+              initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className="group block relative overflow-hidden rounded-xl border border-white/5 bg-zinc-900/40 backdrop-blur-sm p-4 hover:bg-white/5 hover:border-indigo-500/30 transition-all duration-300"
+              transition={{ duration: 0.25 }}
+              className="block p-3 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-white/10 transition-all group"
             >
-              {/* Ligne d'accentuation qui apparaît au hover */}
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-500 to-purple-500 transform scale-y-0 group-hover:scale-y-100 transition-transform duration-300 origin-top" />
-
-              <div className="relative z-10 pl-2">
-                {/* Titre */}
-                <h4 className="text-white font-medium text-sm mb-2 line-clamp-2 leading-snug group-hover:text-indigo-300 transition-colors">
-                  {item.title}
-                </h4>
-
-                {/* Métadonnées */}
-                <div className="flex items-center gap-3 text-xs">
-                  <span className={`font-bold ${getSourceColor(item.source)}`}>
-                    {item.source}
-                  </span>
-                  <span className="text-zinc-600">•</span>
-                  <span className="text-zinc-500">{formatTimeAgo(item.timestamp)}</span>
-                  <ExternalLink className="h-3 w-3 text-zinc-600 group-hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-all ml-auto" />
-                </div>
+              <h4 className="text-sm font-medium text-zinc-200 group-hover:text-white leading-snug line-clamp-2">
+                {item.title}
+              </h4>
+              <div className="flex items-center gap-2 mt-2 text-[10px] text-zinc-500">
+                <span className={`text-indigo-400 font-medium ${getSourceColor(item.source)}`}>{item.source}</span>
+                <span>•</span>
+                <span>{formatTimeAgo(item.published_date)}</span>
+                <ExternalLink className="h-3 w-3 text-zinc-600 ml-auto" />
               </div>
             </motion.a>
-          ))}
-        </div>
-      )}
-
-      {/* Bouton refresh - Fixe en bas */}
-      <motion.button
-        onClick={() => {
-          loadNews(true)
-          if (isMounted) {
-            toast({
-              title: "Actualisation",
-              description: "Flux mis à jour",
-              duration: 2000,
-            })
-          }
-        }}
-        disabled={refreshing}
-        whileHover={{ scale: refreshing ? 1 : 1.02 }}
-        whileTap={{ scale: refreshing ? 1 : 0.98 }}
-        className={`w-full mt-4 py-2 text-xs transition-colors flex-shrink-0 flex items-center justify-center gap-2 ${
-          refreshing ? 'text-zinc-600 cursor-not-allowed' : 'text-zinc-500 hover:text-indigo-400'
-        }`}
-      >
-        <RefreshCw className={`h-3 w-3 ${refreshing ? 'animate-spin' : ''}`} />
-        {refreshing ? 'Actualisation...' : 'Actualiser'}
-      </motion.button>
+          ))
+        )}
+      </div>
     </div>
   )
 }

@@ -8,6 +8,8 @@ export interface EmailSettings {
   delivery_days: string[]
   delivery_time: string
   recipients: string[]
+  email_frequency?: "INSTANT" | "DAILY" | "WEEKLY"
+  alert_keywords?: string
 }
 
 export interface UpdateEmailSettingsResult {
@@ -93,6 +95,8 @@ export async function updateEmailSettings(
           delivery_days: settings.delivery_days,
           delivery_time: settings.delivery_time,
           recipients: settings.recipients,
+          email_frequency: settings.email_frequency || "DAILY",
+          alert_keywords: settings.alert_keywords || null,
         },
         { onConflict: "user_id" }
       )
@@ -140,7 +144,7 @@ export async function getEmailSettings(): Promise<EmailSettings | null> {
 
     const { data, error } = await supabase
       .from("email_settings")
-      .select("is_enabled, delivery_days, delivery_time, recipients")
+      .select("is_enabled, delivery_days, delivery_time, recipients, email_frequency, alert_keywords")
       .eq("user_id", user.id)
       .single()
 
@@ -163,6 +167,8 @@ export async function getEmailSettings(): Promise<EmailSettings | null> {
       delivery_days: data.delivery_days ?? [],
       delivery_time: data.delivery_time ?? "08:00",
       recipients: data.recipients ?? [],
+      email_frequency: (data.email_frequency as "INSTANT" | "DAILY" | "WEEKLY") || "DAILY",
+      alert_keywords: data.alert_keywords || undefined,
     }
   } catch (error) {
     console.error("[EmailSettings] Error fetching settings:", error)

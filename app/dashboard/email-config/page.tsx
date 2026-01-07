@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { Mail, Clock, Plus, X, Save, Check } from "lucide-react"
+import { Mail, Clock, Plus, X, Save, Check, AlertCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
@@ -58,8 +58,11 @@ export default function EmailConfigPage() {
   const [selectedHour, setSelectedHour] = useState("08:00")
   const [emails, setEmails] = useState<string[]>([])
   const [newEmail, setNewEmail] = useState("")
+  const [emailFrequency, setEmailFrequency] = useState<"INSTANT" | "DAILY" | "WEEKLY">("DAILY")
+  const [alertKeywords, setAlertKeywords] = useState("")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
   // Charger la config existante depuis email_settings via Server Action
   useEffect(() => {
@@ -80,6 +83,8 @@ export default function EmailConfigPage() {
         setSelectedDays(dayIds.length > 0 ? dayIds : [1, 2, 3, 4, 5])
         setSelectedHour(settings.delivery_time || "08:00")
         setEmails(settings.recipients || [])
+        setEmailFrequency(settings.email_frequency || "DAILY")
+        setAlertKeywords(settings.alert_keywords || "")
         console.log("[EmailConfig] ✅ Settings loaded:", settings)
       } else {
         // Valeurs par défaut si pas de settings
@@ -88,7 +93,10 @@ export default function EmailConfigPage() {
         setSelectedDays([1, 2, 3, 4, 5])
         setSelectedHour("08:00")
         setEmails([])
+        setEmailFrequency("DAILY")
+        setAlertKeywords("")
       }
+      setHasUnsavedChanges(false)
     } catch (error) {
       console.error("[EmailConfig] Error loading config:", error)
       toast({
@@ -102,11 +110,13 @@ export default function EmailConfigPage() {
   }
 
   const toggleDay = (dayId: number) => {
-    setSelectedDays(prev => 
-      prev.includes(dayId) 
+    setSelectedDays(prev => {
+      const newDays = prev.includes(dayId) 
         ? prev.filter(d => d !== dayId)
         : [...prev, dayId]
-    )
+      setHasUnsavedChanges(true)
+      return newDays
+    })
   }
 
   const addEmail = () => {
@@ -142,6 +152,7 @@ export default function EmailConfigPage() {
 
     setEmails([...emails, trimmed])
     setNewEmail("")
+    setHasUnsavedChanges(true)
     
     toast({
       title: "✅ Email ajouté",
@@ -151,6 +162,7 @@ export default function EmailConfigPage() {
 
   const removeEmail = (email: string) => {
     setEmails(emails.filter(e => e !== email))
+    setHasUnsavedChanges(true)
     toast({
       title: "🗑️ Email supprimé",
       description: `${email} a été retiré de la liste.`,
@@ -170,9 +182,12 @@ export default function EmailConfigPage() {
         delivery_days: deliveryDays,
         delivery_time: selectedHour,
         recipients: emails,
+        email_frequency: emailFrequency,
+        alert_keywords: alertKeywords.trim() || undefined,
       })
 
       if (result.success) {
+        setHasUnsavedChanges(false)
         toast({
           title: "✅ Succès",
           description: result.message,
@@ -246,7 +261,10 @@ export default function EmailConfigPage() {
               </div>
               <Switch
                 checked={enabled}
-                onCheckedChange={setEnabled}
+                onCheckedChange={(checked) => {
+                  setEnabled(checked)
+                  setHasUnsavedChanges(true)
+                }}
                 className="data-[state=checked]:bg-indigo-600"
               />
             </div>
@@ -299,7 +317,10 @@ export default function EmailConfigPage() {
                   Heure d'envoi
                 </Label>
                 
-                <Select value={selectedHour} onValueChange={setSelectedHour}>
+                <Select value={selectedHour} onValueChange={(value) => {
+                  setSelectedHour(value)
+                  setHasUnsavedChanges(true)
+                }}>
                   <SelectTrigger 
                     className="w-full md:w-64 h-12 bg-zinc-900 border-zinc-700 text-white hover:border-indigo-500/50 transition-colors"
                   >
@@ -399,18 +420,113 @@ export default function EmailConfigPage() {
                   </p>
                 )}
               </div>
+
+              {/* D. FRÉQUENCE D'ENVOI */}
+              <div className="space-y-4">
+                <Label htmlFor="frequency" className="text-xl font-bold text-white flex items-center gap-2">
+                  <Mail className="h-5 w-5 text-indigo-400" />
+                  Fréquence d'envoi
+                </Label>
+                
+                <Select 
+                  value={emailFrequency} 
+                  onValueChange={(value: "INSTANT" | "DAILY" | "WEEKLY") => {
+                    setEmailFrequency(value)
+                    setHasUnsavedChanges(true)
+                  }}
+                >
+                  <SelectTrigger 
+                    className="w-full md:w-64 h-12 bg-zinc-900 border-zinc-700 text-white hover:border-indigo-500/50 transition-colors"
+                  >
+                    <SelectValue placeholder="Choisir une fréquence" />
+                  </SelectTrigger>
+                  <SelectContent 
+                    className="bg-zinc-900/95 backdrop-blur-xl border-white/10"
+                  >
+                    <SelectItem
+                      value="INSTANT"
+                      className="text-white hover:bg-indigo-600 hover:text-white focus:bg-indigo-600 focus:text-white cursor-pointer"
+                    >
+                      <div>
+                        <div className="font-medium">Instantané</div>
+                        <div className="text-xs text-zinc-400">Dès qu'un Flow est généré</div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem
+                      value="DAILY"
+                      className="text-white hover:bg-indigo-600 hover:text-white focus:bg-indigo-600 focus:text-white cursor-pointer"
+                    >
+                      <div>
+                        <div className="font-medium">Quotidien</div>
+                        <div className="text-xs text-zinc-400">Une fois par jour aux heures configurées</div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem
+                      value="WEEKLY"
+                      className="text-white hover:bg-indigo-600 hover:text-white focus:bg-indigo-600 focus:text-white cursor-pointer"
+                    >
+                      <div>
+                        <div className="font-medium">Hebdomadaire</div>
+                        <div className="text-xs text-zinc-400">Une fois par semaine</div>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* E. MOTS-CLÉS POUR ALERTES */}
+              <div className="space-y-4">
+                <Label htmlFor="alert-keywords" className="text-xl font-bold text-white flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-indigo-400" />
+                  Mots-clés pour alertes
+                </Label>
+                <p className="text-sm text-zinc-400">
+                  Recevez des alertes instantanées lorsque des actualités contiennent ces mots-clés (séparés par des virgules)
+                </p>
+                <Input
+                  id="alert-keywords"
+                  type="text"
+                  placeholder="crypto, finance, tech, géopolitique..."
+                  value={alertKeywords}
+                  onChange={(e) => {
+                    setAlertKeywords(e.target.value)
+                    setHasUnsavedChanges(true)
+                  }}
+                  className="bg-zinc-800/50 border-white/10 text-white placeholder:text-zinc-500 focus:border-indigo-500"
+                />
+                <p className="text-xs text-zinc-500">
+                  💡 Exemple : "crypto, finance, tech" - Vous recevrez une alerte dès qu'une actualité contient l'un de ces mots-clés
+                </p>
+              </div>
             </div>
 
             {/* 4. FOOTER D'ACTION */}
             <div className="pt-8 border-t border-white/10">
-              <Button
-                onClick={saveConfig}
-                disabled={saving || (enabled && emails.length === 0)}
-                className="w-full md:w-auto px-8 py-6 text-base font-semibold rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white shadow-lg shadow-indigo-500/50 transition-all"
-              >
-                <Save className="mr-2 h-5 w-5" />
-                {saving ? "Enregistrement..." : "Enregistrer les préférences"}
-              </Button>
+              <div className="flex items-center justify-between">
+                {hasUnsavedChanges && (
+                  <div className="flex items-center gap-2 text-sm text-amber-400">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>Modifications non sauvegardées</span>
+                  </div>
+                )}
+                <Button
+                  onClick={saveConfig}
+                  disabled={saving || (enabled && emails.length === 0) || !hasUnsavedChanges}
+                  className="ml-auto px-8 py-6 text-base font-semibold rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white shadow-lg shadow-indigo-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Enregistrement...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-5 w-5" />
+                      Enregistrer les préférences
+                    </>
+                  )}
+                </Button>
+              </div>
 
               {enabled && emails.length === 0 && (
                 <p className="mt-4 text-sm text-amber-400">

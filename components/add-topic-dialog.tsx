@@ -28,7 +28,6 @@ export function AddTopicDialog() {
   const [domain, setDomain] = useState("")
   const [description, setDescription] = useState("")
   const [instructions, setInstructions] = useState("")
-  const [priority, setPriority] = useState("medium")
   const [isActive, setIsActive] = useState(true)
   const router = useRouter()
   const supabase = createClient()
@@ -43,14 +42,27 @@ export function AddTopicDialog() {
       } = await supabase.auth.getUser()
       if (!user) throw new Error("Not authenticated")
 
+      // Calculer la position (récupérer le max position + 1)
+      const { data: existingTopics } = await supabase
+        .from("custom_topics")
+        .select("position")
+        .eq("user_id", user.id)
+        .order("position", { ascending: false })
+        .limit(1)
+
+      const maxPosition = existingTopics && existingTopics.length > 0 ? existingTopics[0].position : -1
+      const newPosition = maxPosition + 1
+
       const { error } = await supabase.from("custom_topics").insert({
         user_id: user.id,
         title,
         domain,
         description,
         instructions,
-        priority,
         is_active: isActive,
+        position: newPosition,
+        complexity_level: "standard",
+        length_level: "standard",
       })
 
       if (error) throw error
@@ -60,7 +72,6 @@ export function AddTopicDialog() {
       setDomain("")
       setDescription("")
       setInstructions("")
-      setPriority("medium")
       setIsActive(true)
       setOpen(false)
       router.refresh()
@@ -127,20 +138,6 @@ export function AddTopicDialog() {
               onChange={(e) => setInstructions(e.target.value)}
               placeholder="Ajoutez des instructions pour ce sujet"
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="priority">Priorité</Label>
-            <Select value={priority} onValueChange={setPriority}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choisissez une priorité" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Faible</SelectItem>
-                <SelectItem value="medium">Moyenne</SelectItem>
-                <SelectItem value="high">Haute</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           <div className="space-y-2">

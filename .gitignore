@@ -18,3 +18,4 @@ build/
 # Système
 .DS_Store
 *.log
+/lib/generated/prisma

@@ -63,10 +63,10 @@ const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
     priceAmount: 16.90,
     stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO || "price_1SeZpY3NvGWqr99X4vdnYTpK", // TODO: Remplacer par votre ID Stripe
     maxProjects: 15,
-    maxRecapsPerWeek: 15,
+    maxRecapsPerWeek: 100,
     description: "Pour les power users exigeants",
     features: [
-      "15 Flows par semaine",
+      "100 Flows par semaine",
       "15 projets actifs maximum",
       "Accès Dashboard web",
       "✅ Envoi par email (PDF/HTML)",

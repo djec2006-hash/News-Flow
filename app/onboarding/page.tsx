@@ -16,7 +16,8 @@ import {
   LineChart, 
   Trophy, 
   Gem, 
-  Leaf 
+  Leaf,
+  Check
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { updateInterests } from "@/app/actions/update-interests"
@@ -119,7 +120,7 @@ export default function OnboardingPage() {
   const [fullName, setFullName] = useState("")
   const [age, setAge] = useState("")
   const [complexityLevel, setComplexityLevel] = useState("")
-  const [selectedObjective, setSelectedObjective] = useState("")
+  const [selectedObjectives, setSelectedObjectives] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const supabaseEnabled = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
@@ -167,8 +168,11 @@ export default function OnboardingPage() {
       } = await supabase.auth.getUser()
       if (!user) throw new Error("Non authentifié")
 
-      const selectedObj = OBJECTIVES.find((obj) => obj.id === selectedObjective)
-      const generalDomains = selectedObj?.domains || []
+      // Récupérer tous les domaines des objectifs sélectionnés
+      const selectedObjs = OBJECTIVES.filter((obj) => selectedObjectives.includes(obj.id))
+      const generalDomains = Array.from(
+        new Set(selectedObjs.flatMap((obj) => obj.domains))
+      )
 
       console.log("[Onboarding] 🚀 Saving profile and preferences...")
 
@@ -352,7 +356,7 @@ export default function OnboardingPage() {
               className="w-full max-w-2xl"
             >
               <div className="mb-12">
-                <p className="text-zinc-500 text-lg mb-2">Salut {fullName.split(" ")[0]} 👋</p>
+                <p className="text-zinc-500 text-lg mb-2">Salut {fullName.split(" ")[0]}</p>
                 <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">
                   Quel âge
                   <br />
@@ -369,7 +373,7 @@ export default function OnboardingPage() {
                     onChange={(e) => setAge(e.target.value)}
                     onKeyPress={(e) => handleKeyPress(e, age.trim().length > 0 && Number(age) > 0)}
                     placeholder="35"
-                    className="w-full bg-transparent text-4xl md:text-5xl font-medium text-white placeholder-zinc-700 border-0 border-b-2 border-zinc-800 focus:border-b-2 focus:border-transparent focus:outline-none pb-4 transition-all duration-300"
+                    className="w-full bg-transparent text-4xl md:text-5xl font-medium text-white placeholder-zinc-700 border-0 border-b-2 border-zinc-800 focus:border-b-2 focus:border-transparent focus:outline-none pb-4 transition-all duration-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     style={{
                       borderImage: age ? "linear-gradient(90deg, rgb(99, 102, 241), rgb(236, 72, 153)) 1" : "",
                     }}
@@ -439,7 +443,7 @@ export default function OnboardingPage() {
             </motion.div>
           )}
 
-          {/* Étape 4 : Objectif */}
+          {/* Étape 4 : Objectifs (Multi-select) */}
           {step === 4 && (
             <motion.div
               key="step4"
@@ -457,35 +461,141 @@ export default function OnboardingPage() {
                   <br />
                   principalement ?
                 </h1>
-                <p className="text-lg text-zinc-400">Choisissez votre domaine d'intérêt</p>
+                <p className="text-lg text-zinc-400">
+                  Sélectionnez jusqu'à 3 domaines d'intérêt ({selectedObjectives.length}/3)
+                </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-8">
                 {OBJECTIVES.map((objective, index) => {
                   const Icon = objective.IconComponent
+                  const isSelected = selectedObjectives.includes(objective.id)
+                  
+                  // Mapping des couleurs par domaine
+                  const colorMap: Record<string, {
+                    border: string
+                    bg: string
+                    icon: string
+                  }> = {
+                    crypto: {
+                      border: "border-orange-500",
+                      bg: "bg-orange-500/10",
+                      icon: "text-orange-500",
+                    },
+                    bourse: {
+                      border: "border-blue-500",
+                      bg: "bg-blue-500/10",
+                      icon: "text-blue-500",
+                    },
+                    immobilier: {
+                      border: "border-indigo-500",
+                      bg: "bg-indigo-500/10",
+                      icon: "text-indigo-500",
+                    },
+                    tech: {
+                      border: "border-cyan-500",
+                      bg: "bg-cyan-500/10",
+                      icon: "text-cyan-500",
+                    },
+                    geopolitique: {
+                      border: "border-slate-500",
+                      bg: "bg-slate-500/10",
+                      icon: "text-slate-400",
+                    },
+                    economie: {
+                      border: "border-emerald-500",
+                      bg: "bg-emerald-500/10",
+                      icon: "text-emerald-500",
+                    },
+                    sport: {
+                      border: "border-red-500",
+                      bg: "bg-red-500/10",
+                      icon: "text-red-500",
+                    },
+                    luxe: {
+                      border: "border-amber-500",
+                      bg: "bg-amber-500/10",
+                      icon: "text-amber-500",
+                    },
+                    ecologie: {
+                      border: "border-green-500",
+                      bg: "bg-green-500/10",
+                      icon: "text-green-500",
+                    },
+                  }
+
+                  const colors = colorMap[objective.id] || {
+                    border: "border-indigo-500",
+                    bg: "bg-indigo-500/10",
+                    icon: "text-indigo-500",
+                  }
+
+                  const handleObjectiveClick = () => {
+                    if (isSelected) {
+                      // Désélectionner
+                      setSelectedObjectives(selectedObjectives.filter((id) => id !== objective.id))
+                    } else {
+                      // Sélectionner seulement si on a moins de 3
+                      if (selectedObjectives.length < 3) {
+                        setSelectedObjectives([...selectedObjectives, objective.id])
+                      }
+                    }
+                  }
+
                   return (
                     <motion.button
                       key={objective.id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.08 }}
-                      onClick={() => {
-                        setSelectedObjective(objective.id)
-                        setTimeout(handleSubmit, 300)
-                      }}
-                      className={`group relative p-4 md:p-5 rounded-xl border-2 transition-all duration-300 hover:scale-105 ${
-                        selectedObjective === objective.id
-                          ? "border-indigo-500 bg-indigo-500/10"
-                          : "border-zinc-800 bg-zinc-900/50 hover:border-zinc-700"
+                      onClick={handleObjectiveClick}
+                      disabled={!isSelected && selectedObjectives.length >= 3}
+                      className={`group relative p-4 md:p-5 rounded-xl border-2 transition-all duration-200 ${
+                        isSelected
+                          ? `${colors.border} ${colors.bg} hover:scale-105`
+                          : selectedObjectives.length >= 3
+                          ? "border-zinc-800 bg-zinc-900/50 opacity-50 cursor-not-allowed"
+                          : "border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 hover:scale-105"
                       }`}
                     >
-                      <Icon className="w-8 h-8 md:w-10 md:h-10 mb-3 text-indigo-400 mx-auto" />
+                      <Icon
+                        className={`w-8 h-8 md:w-10 md:h-10 mb-3 mx-auto transition-colors duration-200 ${
+                          isSelected ? colors.icon : "text-zinc-500"
+                        }`}
+                      />
                       <h3 className="text-base md:text-lg font-bold text-white mb-1">{objective.title}</h3>
                       <p className="text-xs md:text-sm text-zinc-500">{objective.subtitle}</p>
+                      {isSelected && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white flex items-center justify-center"
+                        >
+                          <Check className="w-4 h-4 text-black" />
+                        </motion.div>
+                      )}
                     </motion.button>
                   )
                 })}
               </div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="flex justify-center"
+              >
+                <motion.button
+                  onClick={handleSubmit}
+                  disabled={selectedObjectives.length === 0 || isSubmitting}
+                  className="group relative flex items-center gap-3 px-8 py-4 bg-white text-black text-lg font-semibold rounded-full disabled:opacity-30 disabled:cursor-not-allowed transition-all hover:scale-105 disabled:hover:scale-100"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Suivant
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </motion.button>
+              </motion.div>
             </motion.div>
           )}
 

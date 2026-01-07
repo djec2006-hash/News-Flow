@@ -4,14 +4,15 @@ import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { PDFButton } from "@/components/ui/pdf-button"
 import { EmailButton } from "@/components/ui/email-button"
-import { Loader2, Calendar, Mail, FileText, ChevronRight } from "lucide-react"
+import { Loader2, Calendar, Mail, FileText, ChevronRight, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import SourcesList from "@/components/flow/SourcesList"
 import { MarkdownRenderer } from "@/components/flow/MarkdownRenderer"
+import { Button } from "@/components/ui/button"
 
 interface Recap {
   id: string
@@ -35,7 +36,7 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true)
   const [recaps, setRecaps] = useState<Recap[]>([])
   const [selectedRecap, setSelectedRecap] = useState<Recap | null>(null)
-  const [dialogOpen, setDialogOpen] = useState(false)
+  const [sheetOpen, setSheetOpen] = useState(false)
   const [error, setError] = useState("")
 
   useEffect(() => {
@@ -68,9 +69,9 @@ export default function HistoryPage() {
     }
   }
 
-  const openRecapDialog = (recap: Recap) => {
+  const openRecapSheet = (recap: Recap) => {
     setSelectedRecap(recap)
-    setDialogOpen(true)
+    setSheetOpen(true)
   }
 
   const renderFlowBody = (recap: Recap) => {
@@ -235,7 +236,7 @@ export default function HistoryPage() {
               className="group"
             >
               <div
-                onClick={() => openRecapDialog(recap)}
+                onClick={() => openRecapSheet(recap)}
                 className="relative overflow-hidden rounded-2xl border border-white/5 bg-zinc-900/40 backdrop-blur-xl p-6 cursor-pointer transition-all duration-300 hover:border-indigo-500/30 hover:shadow-lg hover:shadow-indigo-500/10"
               >
                 {/* Effet de brillance au hover */}
@@ -309,81 +310,74 @@ export default function HistoryPage() {
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════════════
-          MODALE DE LECTURE - OPTIMISÉE POUR LE CONFORT
+          PANNEAU LATÉRAL DE LECTURE - GRAND FORMAT ARTICLE
           ═══════════════════════════════════════════════════════════════════════════ */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent 
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent 
+          side="right"
           className="
-            w-[95vw] max-w-7xl 
-            max-h-[90vh] 
-            min-h-[60vh]
+            w-full sm:max-w-2xl md:min-w-[900px] lg:min-w-[1000px]
+            p-0 
+            bg-zinc-950/95 backdrop-blur-xl
+            border-l border-white/10
             overflow-hidden
-            bg-zinc-900/95 backdrop-blur-xl 
-            border border-white/10
-            shadow-2xl shadow-black/50
-            p-0
           "
         >
           {selectedRecap && (
-            <div className="flex flex-col h-full max-h-[90vh]">
-              {/* Header fixe */}
-              <div className="flex-shrink-0 p-6 md:p-8 border-b border-white/10 bg-zinc-900/80 backdrop-blur-sm">
-                <DialogHeader>
+            <div className="flex flex-col h-full">
+              {/* Header fixe avec sticky */}
+              <div className="sticky top-0 z-10 flex-shrink-0 px-8 py-6 border-b border-white/10 bg-zinc-950/90 backdrop-blur-xl">
+                <SheetHeader>
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      {/* Badge de date stylisé */}
-                      <div className="flex items-center gap-3 mb-3">
+                      {/* Badges et métadonnées */}
+                      <div className="flex items-center gap-3 mb-3 flex-wrap">
                         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
-                          <Calendar className="h-4 w-4 text-indigo-400" />
-                          <time className="text-sm font-mono text-indigo-300">
+                          <Calendar className="h-3.5 w-3.5 text-indigo-400" />
+                          <time className="text-xs font-mono text-indigo-300">
                             {new Date(selectedRecap.created_at).toLocaleDateString("fr-FR", {
                               day: "numeric",
                               month: "long",
                               year: "numeric",
                             })}
                           </time>
-                          <span className="text-xs text-indigo-400/60">
-                            {new Date(selectedRecap.created_at).toLocaleTimeString("fr-FR", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
                         </div>
+                        
+                        <Badge 
+                          variant="outline" 
+                          className="bg-zinc-800/50 border-white/10 text-zinc-300 text-xs"
+                        >
+                          {selectedRecap.type === "on_demand" ? "On Demand" : "Quotidien"}
+                        </Badge>
+
                         {selectedRecap.email_sent && (
-                          <div className="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg">
-                            <Mail className="h-3.5 w-3.5" />
+                          <div className="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg">
+                            <Mail className="h-3 w-3" />
                             Envoyé
                           </div>
                         )}
                       </div>
                       
                       {/* Titre principal */}
-                      <DialogTitle className="text-3xl md:text-4xl lg:text-5xl text-white font-bold leading-tight pr-4">
+                      <SheetTitle className="text-2xl md:text-3xl text-white font-bold leading-tight pr-12">
                         {selectedRecap.summary || "Flow"}
-                      </DialogTitle>
+                      </SheetTitle>
                       
-                      {/* Topics couverts en badges */}
+                      {/* Topics couverts */}
                       {selectedRecap.topics_covered && (
-                        <DialogDescription className="mt-3 flex items-center gap-2 flex-wrap">
-                          {selectedRecap.topics_covered.split(",").slice(0, 4).map((topic, i) => (
-                            <span 
-                              key={i}
-                              className="text-xs px-2 py-1 rounded-full bg-zinc-800 text-zinc-400 border border-white/5"
-                            >
-                              {topic.trim()}
-                            </span>
-                          ))}
-                        </DialogDescription>
+                        <SheetDescription className="mt-2 text-sm text-zinc-400">
+                          {selectedRecap.topics_covered.split(",").slice(0, 3).join(" • ")}
+                        </SheetDescription>
                       )}
                     </div>
                     
-                    {/* Actions */}
+                    {/* Actions en haut à droite */}
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <EmailButton
                         flowId={selectedRecap.id}
-                        variant="outline"
-                        size="sm"
-                        className="border-white/10 hover:border-indigo-500/50 hover:bg-indigo-500/10"
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9"
                       />
                       <PDFButton
                         flowData={{
@@ -395,32 +389,32 @@ export default function HistoryPage() {
                           key_events: selectedRecap.key_events,
                           topics_covered: selectedRecap.topics_covered,
                         }}
-                        variant="outline"
-                        className="border-white/10 hover:border-indigo-500/50 hover:bg-indigo-500/10"
+                        variant="ghost"
+                        className="h-9 w-9"
                       />
                     </div>
                   </div>
-                </DialogHeader>
+                </SheetHeader>
               </div>
 
-              {/* Contenu scrollable */}
+              {/* Contenu scrollable avec padding généreux */}
               <div className="flex-1 overflow-y-auto overscroll-contain">
-                <div className="p-6 md:p-8 lg:p-12 space-y-8">
+                <div className="px-8 py-8 space-y-8">
                   {/* Corps du Flow */}
                   {selectedRecap.body && (
-                    <div className="max-w-5xl mx-auto">
+                    <div>
                       {renderFlowBody(selectedRecap)}
                     </div>
                   )}
 
                   {/* Événements clés */}
                   {selectedRecap.key_events && (
-                    <div className="max-w-5xl mx-auto pt-6 border-t border-white/5">
-                      <h3 className="font-bold text-2xl text-white mb-4 flex items-center gap-2">
+                    <div className="pt-6 border-t border-white/5">
+                      <h3 className="font-bold text-xl text-white mb-4 flex items-center gap-2">
                         <span className="text-indigo-400">📌</span>
                         Événements clés
                       </h3>
-                      <div className="text-zinc-200 text-lg leading-relaxed whitespace-pre-wrap">
+                      <div className="text-zinc-200 text-base leading-relaxed whitespace-pre-wrap">
                         {selectedRecap.key_events}
                       </div>
                     </div>
@@ -428,8 +422,8 @@ export default function HistoryPage() {
 
                   {/* Canaux */}
                   {selectedRecap.channels && selectedRecap.channels.length > 0 && (
-                    <div className="max-w-5xl mx-auto pt-6 border-t border-white/5">
-                      <h3 className="font-semibold text-base text-zinc-400 mb-3 uppercase tracking-wider">
+                    <div className="pt-6 border-t border-white/5">
+                      <h3 className="font-semibold text-sm text-zinc-400 mb-3 uppercase tracking-wider">
                         Canaux de diffusion
                       </h3>
                       <div className="flex gap-2 flex-wrap">
@@ -447,10 +441,10 @@ export default function HistoryPage() {
                   )}
 
                   {/* Footer avec métadonnées */}
-                  <div className="max-w-5xl mx-auto pt-8 border-t border-white/5">
+                  <div className="pt-8 border-t border-white/5">
                     <div className="flex items-center justify-between text-xs text-zinc-500">
                       <span>
-                        Flow ID: <code className="text-zinc-600">{selectedRecap.id.slice(0, 8)}...</code>
+                        Flow ID: <code className="text-zinc-600 font-mono">{selectedRecap.id.slice(0, 8)}...</code>
                       </span>
                       {selectedRecap.email_sent_at && (
                         <span className="flex items-center gap-1">
@@ -464,8 +458,8 @@ export default function HistoryPage() {
               </div>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

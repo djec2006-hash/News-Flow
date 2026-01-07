@@ -141,6 +141,206 @@ const SpotlightCard = ({ children, className = "" }: { children: React.ReactNode
   </motion.div>
 )
 
+// Composant de visualisation du réseau neuronal
+const NeuralNetworkVisualization = () => {
+  // Configuration des nœuds (positions relatives en pourcentage)
+  const nodes = [
+    { id: 1, x: 20, y: 20, color: "indigo" },
+    { id: 2, x: 50, y: 15, color: "violet" },
+    { id: 3, x: 80, y: 25, color: "blue" },
+    { id: 4, x: 15, y: 50, color: "indigo" },
+    { id: 5, x: 45, y: 45, color: "violet" },
+    { id: 6, x: 75, y: 55, color: "blue" },
+    { id: 7, x: 30, y: 75, color: "indigo" },
+    { id: 8, x: 60, y: 80, color: "violet" },
+    { id: 9, x: 85, y: 70, color: "blue" },
+  ]
+
+  // Connexions entre les nœuds
+  const connections = [
+    [1, 2], [1, 4], [1, 5],
+    [2, 3], [2, 5], [2, 6],
+    [3, 6], [3, 9],
+    [4, 5], [4, 7],
+    [5, 6], [5, 7], [5, 8],
+    [6, 8], [6, 9],
+    [7, 8],
+    [8, 9],
+  ]
+
+  const getColorClasses = (color: string) => {
+    const colorMap: Record<string, { stroke: string; glow: string; node: string }> = {
+      indigo: {
+        stroke: "stroke-indigo-500",
+        glow: "drop-shadow-[0_0_4px_rgba(99,102,241,0.6)]",
+        node: "fill-indigo-500",
+      },
+      violet: {
+        stroke: "stroke-violet-500",
+        glow: "drop-shadow-[0_0_4px_rgba(139,92,246,0.6)]",
+        node: "fill-violet-500",
+      },
+      blue: {
+        stroke: "stroke-blue-500",
+        glow: "drop-shadow-[0_0_4px_rgba(59,130,246,0.6)]",
+        node: "fill-blue-500",
+      },
+    }
+    return colorMap[color] || colorMap.indigo
+  }
+
+  return (
+    <div className="absolute inset-0 flex items-center justify-center">
+      <svg
+        className="w-full h-full"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="xMidYMid meet"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        {/* Définition des filtres pour les effets de lueur */}
+        <defs>
+          <filter id="glow-indigo">
+            <feGaussianBlur stdDeviation="0.5" result="coloredBlur" />
+            <feMerge>
+              <feMergeNode in="coloredBlur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <filter id="glow-violet">
+            <feGaussianBlur stdDeviation="0.5" result="coloredBlur" />
+            <feMerge>
+              <feMergeNode in="coloredBlur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <filter id="glow-blue">
+            <feGaussianBlur stdDeviation="0.5" result="coloredBlur" />
+            <feMerge>
+              <feMergeNode in="coloredBlur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        {/* Connexions (lignes) */}
+        {connections.map(([from, to], index) => {
+          const fromNode = nodes.find((n) => n.id === from)
+          const toNode = nodes.find((n) => n.id === to)
+          if (!fromNode || !toNode) return null
+
+          // Calculer la longueur de la ligne
+          const dx = toNode.x - fromNode.x
+          const dy = toNode.y - fromNode.y
+          const length = Math.sqrt(dx * dx + dy * dy)
+
+          const colors = getColorClasses(fromNode.color)
+          return (
+            <motion.line
+              key={`conn-${from}-${to}-${index}`}
+              x1={fromNode.x}
+              y1={fromNode.y}
+              x2={toNode.x}
+              y2={toNode.y}
+              strokeWidth="0.15"
+              className={colors.stroke}
+              strokeDasharray={length}
+              initial={{ strokeDashoffset: length, opacity: 0 }}
+              animate={{
+                strokeDashoffset: [length, 0, length],
+                opacity: [0.2, 0.5, 0.2],
+              }}
+              transition={{
+                duration: 4,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: index * 0.1,
+              }}
+            />
+          )
+        })}
+
+        {/* Nœuds (points) */}
+        {nodes.map((node) => {
+          const colors = getColorClasses(node.color)
+          const filterId = `glow-${node.color}`
+          return (
+            <motion.g key={node.id}>
+              <motion.circle
+                cx={node.x}
+                cy={node.y}
+                r="1.2"
+                className={colors.node}
+                filter={`url(#${filterId})`}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{
+                  scale: [1, 1.3, 1],
+                  opacity: [0.6, 1, 0.6],
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: node.id * 0.2,
+                }}
+              />
+              {/* Lueur externe */}
+              <motion.circle
+                cx={node.x}
+                cy={node.y}
+                r="2"
+                className={colors.node}
+                opacity={0.2}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{
+                  scale: [1, 1.5, 1],
+                  opacity: [0.1, 0.3, 0.1],
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: node.id * 0.2,
+                }}
+              />
+            </motion.g>
+          )
+        })}
+
+        {/* Particules flottantes pour l'effet "flux de données" */}
+        {Array.from({ length: 8 }).map((_, i) => {
+          const startNode = nodes[Math.floor(Math.random() * nodes.length)]
+          const endNode = nodes[Math.floor(Math.random() * nodes.length)]
+          const colors = getColorClasses(startNode.color)
+
+          return (
+            <motion.circle
+              key={`particle-${i}`}
+              r="0.3"
+              className={colors.node}
+              initial={{
+                cx: startNode.x,
+                cy: startNode.y,
+                opacity: 0,
+              }}
+              animate={{
+                cx: [startNode.x, endNode.x, startNode.x],
+                cy: [startNode.y, endNode.y, startNode.y],
+                opacity: [0, 0.8, 0],
+              }}
+              transition={{
+                duration: 5,
+                repeat: Infinity,
+                ease: "linear",
+                delay: i * 0.6,
+              }}
+            />
+          )
+        })}
+      </svg>
+    </div>
+  )
+}
+
 export default function FeaturesPage() {
   return (
     <div className="relative min-h-screen bg-zinc-950 text-white">
@@ -172,7 +372,7 @@ export default function FeaturesPage() {
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg" className="border-white/30 px-8 py-6 text-base text-white hover:bg-white/10">
-              <Link href="/how-it-works">Voir la stack complète</Link>
+              <Link href="/how-it-works">Comprendre notre technologie</Link>
             </Button>
           </div>
         </motion.section>
@@ -225,7 +425,7 @@ export default function FeaturesPage() {
                   </SpotlightCard>
                 </motion.div>
                 <motion.div
-                  className={`relative h-[400px] rounded-[32px] border border-white/5 bg-zinc-900/40 ${
+                  className={`relative h-[400px] rounded-[32px] border border-white/5 bg-white/5 overflow-hidden ${
                     index % 2 !== 0 ? "lg:order-1" : ""
                   }`}
                   initial="hidden"
@@ -234,12 +434,8 @@ export default function FeaturesPage() {
                   variants={fadeInUp}
                   transition={{ duration: 0.8, delay: 0.1 }}
                 >
-                  {/* Scène 3D : NeuralBrain */}
-                  {index === 0 && (
-                    <Scene3DWrapper cameraPosition={[0, 0, 6]}>
-                      <NeuralBrain />
-                    </Scene3DWrapper>
-                  )}
+                  {/* Réseau neuronal animé pour le premier bloc */}
+                  {index === 0 && <NeuralNetworkVisualization />}
                   {/* Scène 3D alternative pour le second bloc */}
                   {index === 1 && (
                     <div className="absolute inset-0 flex items-center justify-center">

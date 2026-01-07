@@ -225,17 +225,11 @@ export default function DashboardPage() {
       // Phase 1: Enrichissement de la demande (si instruction fournie)
       if (dailyInstruction && dailyInstruction.trim().length > 0) {
         setGenerationPhase("enhancing")
-        // Petit délai pour montrer l'état d'enrichissement
         await new Promise(resolve => setTimeout(resolve, 800))
       }
       
       // Phase 2: Génération du Flow
       setGenerationPhase("generating")
-
-      // Délai supplémentaire pour Deep Search (simulation)
-      if (deepSearchMode) {
-        await new Promise(resolve => setTimeout(resolve, 2000))
-      }
 
       const response = await fetch("/api/generate-flow", {
         method: "POST",
@@ -248,19 +242,35 @@ export default function DashboardPage() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Erreur lors de la génération")
+        const errorData = await response.json().catch(() => ({}))
+        
+        // Gestion spécifique des erreurs de limite
+        if (errorData.error === "LIMIT_REACHED") {
+          toast({
+            title: "⚠️ Quota atteint",
+            description: errorData.message || "Vous avez atteint votre limite hebdomadaire.",
+            variant: "destructive",
+            duration: 5000,
+          })
+          return
+        }
+        
+        // Autres erreurs
+        throw new Error(errorData.error || errorData.message || "Erreur lors de la génération")
       }
 
       // Phase 3: Finalisation
       setGenerationPhase("finalizing")
       const data = await response.json()
 
+      console.log("[Dashboard] Flow generated successfully:", data)
+
       toast({
         title: "✨ Flow généré",
-        description: dailyInstruction 
-          ? "Votre demande a été enrichie par l'IA et votre Flow est prêt !"
+        description: data.elapsedTime 
+          ? `Votre Flow est prêt ! (généré en ${data.elapsedTime})`
           : "Votre Flow a été généré avec succès !",
+        duration: 4000,
       })
 
       setDailyInstruction("")
@@ -268,6 +278,7 @@ export default function DashboardPage() {
 
       if (!supabaseEnabled || !user) return
 
+      // Recharger les données
       const { data: latestFlow } = await supabase
         .from("recaps")
         .select("*")
@@ -289,11 +300,13 @@ export default function DashboardPage() {
         .gte("created_at", sevenDaysAgo.toISOString())
       setWeeklyFlowCount(weeklyCount || 0)
     } catch (error: any) {
-      console.error("[newsflow] handleGenerateFlow error:", error)
+      console.error("[Dashboard] Flow generation error:", error)
+      
       toast({
-        title: "Erreur",
-        description: error.message || "Impossible de générer le Flow",
+        title: "❌ Erreur de génération",
+        description: error.message || "Impossible de générer le Flow. Veuillez réessayer.",
         variant: "destructive",
+        duration: 5000,
       })
     } finally {
       setGenerating(false)
@@ -307,12 +320,9 @@ export default function DashboardPage() {
       case "enhancing":
         return { icon: "🧠", text: "Optimisation de votre demande par l'IA..." }
       case "generating":
-        if (deepSearchMode) {
-          return { icon: "🔍", text: "Analyse approfondie des sources en cours..." }
-        }
-        return { icon: "⚡", text: "Génération de votre Flow personnalisé..." }
+        return { icon: "⚡", text: "Analyse des marchés en cours (10-15s)..." }
       case "finalizing":
-        return { icon: "✨", text: "Finalisation en cours..." }
+        return { icon: "✨", text: "Finalisation de votre Flow..." }
       default:
         return { icon: "🚀", text: "Générer maintenant" }
     }
@@ -333,6 +343,21 @@ export default function DashboardPage() {
             {latestFlow.body}
           </div>
         )
+      }
+
+      const sentimentStyles: Record<string, { badge: string; icon: string }> = {
+        bullish: {
+          badge: "inline-flex items-center gap-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 px-2 py-1 text-xs font-medium",
+          icon: "↑",
+        },
+        bearish: {
+          badge: "inline-flex items-center gap-1 rounded-full bg-rose-500/10 text-rose-300 border border-rose-500/20 px-2 py-1 text-xs font-medium",
+          icon: "↓",
+        },
+        neutral: {
+          badge: "inline-flex items-center gap-1 rounded-full bg-zinc-500/10 text-zinc-300 border border-zinc-500/20 px-2 py-1 text-xs font-medium",
+          icon: "→",
+        },
       }
 
       return (
@@ -363,14 +388,40 @@ export default function DashboardPage() {
           )}
 
           {parsed.sections.map((section: any, idx: number) => {
+            const sentiment = section.sentiment || "neutral"
+            const style = sentimentStyles[sentiment] || sentimentStyles.neutral
+            const contentStr = (section.content || "").trim()
+            const isEmptyContent = !contentStr || /erreur|indisponible/i.test(contentStr)
             return (
               <section key={idx} className="space-y-4">
-                <h3 className="text-3xl font-bold text-white mt-8 mb-4 underline decoration-indigo-500 decoration-2 underline-offset-8">
-                  {section.title}
-                </h3>
-                <div className="space-y-3">
-                  <MarkdownRenderer content={section.content || ""} />
+                <div className="flex items-center gap-3 mt-8 mb-2">
+                  <h3 className="text-3xl font-bold text-white underline decoration-indigo-500 decoration-2 underline-offset-8">
+                    {section.title}
+                  </h3>
                 </div>
+                {isEmptyContent ? (
+                  <div className="rounded-xl border border-white/5 bg-zinc-900/50 px-4 py-6 text-sm text-zinc-400 flex items-center gap-3">
+                    <Signal className="h-4 w-4 text-zinc-500" />
+                    <span>Rien à signaler pour le moment sur ce sujet.</span>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <MarkdownRenderer content={contentStr} />
+                  </div>
+                )}
+                {Array.isArray(section.sources) && section.sources.length > 0 && (
+                  <div className="pt-3 border-t border-white/5 text-xs text-zinc-600">
+                    <span className="mr-1 text-zinc-500">Sources :</span>
+                    <span className="text-zinc-500">
+                      {section.sources.map((src: string, i: number) => (
+                        <span key={src + i}>
+                          {src}
+                          {i < section.sources.length - 1 ? " • " : ""}
+                        </span>
+                      ))}
+                    </span>
+                  </div>
+                )}
               </section>
             )
           })}
@@ -419,11 +470,11 @@ export default function DashboardPage() {
 
       {/* Contenu principal */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
           {/* Colonne principale (2/3) */}
-          <div className="lg:col-span-2 flex flex-col gap-4">
+          <div className="lg:col-span-2 flex flex-col gap-6">
         {/* Header */}
-        <motion.div initial="hidden" animate="visible" variants={fadeIn} className="mb-6">
+        <motion.div initial="hidden" animate="visible" variants={fadeIn}>
           <h1 className="text-2xl font-semibold text-white tracking-tight">
             Bonjour {profile?.full_name || "Elliot"}
           </h1>
@@ -438,7 +489,7 @@ export default function DashboardPage() {
           initial="hidden"
           animate="visible"
           variants={staggerContainer}
-          className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-12"
+          className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6"
         >
           {/* Colonne Gauche (1/3) - Deux cartes empilées */}
           <div className="lg:col-span-1 flex flex-col gap-4">
@@ -518,20 +569,7 @@ export default function DashboardPage() {
                 
                 {/* Infos du plan */}
                 <div className="mb-3 space-y-1">
-                  <div className="text-xs text-zinc-500">
-                    {planConfig.pricePerMonth}
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    {planConfig.hasEmailDelivery ? (
-                      <span className="inline-flex items-center gap-1 text-green-400">
-                        ✅ Envoi par email activé
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-zinc-500">
-                        ❌ Pas d'envoi email
-                      </span>
-                    )}
-                  </div>
+                  {/* Ligne "Envoi par email activé" retirée */}
                 </div>
 
                 <div className="space-y-2">
@@ -543,13 +581,24 @@ export default function DashboardPage() {
                     value={(weeklyFlowCount / planConfig.maxRecapsPerWeek) * 100} 
                     className="h-1.5 bg-zinc-800"
                   />
+
+                  {/* Section info supplémentaire */}
+                  <div className="mt-4 pt-4 border-t border-white/5 text-xs text-zinc-500 flex items-start gap-2">
+                    <span className="text-indigo-400">ℹ️</span>
+                    <span>
+                      Les quotas se réinitialisent chaque semaine. Pense à lancer tes Flows clés avant dimanche soir pour profiter au maximum de ton plan.
+                    </span>
+                  </div>
                   
                   {/* Incitation à upgrade si Free */}
                   {profile?.plan_type === "free" && (
                     <div className="mt-4 pt-4 border-t border-white/5">
                       <Link href="/pricing">
-                        <Button size="sm" className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white">
-                          🚀 Passer à Basic pour les emails
+                        <Button 
+                          size="sm" 
+                          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-0 shadow-[0_0_15px_rgba(59,130,246,0.4)] transition-all duration-300"
+                        >
+                          Passer au plan supérieur
                         </Button>
                       </Link>
                     </div>
@@ -559,8 +608,11 @@ export default function DashboardPage() {
                   {profile?.plan_type === "basic" && (
                     <div className="mt-4 pt-4 border-t border-white/5">
                       <Link href="/pricing">
-                        <Button size="sm" variant="outline" className="w-full border-amber-500/30 text-amber-400 hover:bg-amber-500/10">
-                          ⭐ Passer à Pro pour l'IA avancée
+                        <Button 
+                          size="sm" 
+                          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-0 shadow-[0_0_15px_rgba(59,130,246,0.4)] transition-all duration-300"
+                        >
+                          Passer au plan supérieur
                         </Button>
                       </Link>
                     </div>
@@ -576,7 +628,7 @@ export default function DashboardPage() {
           initial={{ opacity: 0, scaleX: 0.95 }}
           animate={{ opacity: 1, scaleX: 1 }}
           transition={{ duration: 0.5, delay: 0.5 }}
-          className="flex-1"
+          className="mt-auto"
         >
           <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-zinc-900/40 backdrop-blur-md p-8">
             <div className="flex items-center gap-3 mb-6">
@@ -785,7 +837,7 @@ export default function DashboardPage() {
               transition={{ duration: 0.6, delay: 0.5 }}
               className="flex flex-col h-full"
             >
-              <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-zinc-900/40 backdrop-blur-md p-6 flex flex-col h-full">
+              <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-zinc-900/40 backdrop-blur-md p-6 flex flex-col h-full min-h-0">
                 <LiveFeed />
               </div>
             </motion.div>

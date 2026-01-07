@@ -18,14 +18,30 @@ export async function GET(request: NextRequest) {
       } = await supabase.auth.getUser()
 
       if (user) {
-        const { data: profile } = await supabase
+        // Vérifier le profil avec gestion d'erreur robuste
+        const { data: profile, error: profileError } = await supabase
           .from("profiles")
-          .select("*")
+          .select("full_name, age, onboarding_completed")
           .eq("id", user.id)
-          .single()
+          .maybeSingle()
 
-        // Rediriger vers onboarding si le profil n'est pas complet
-        if (!profile || !profile.full_name || !profile.age) {
+        // Si erreur RLS ou timeout, NE PAS rediriger vers onboarding
+        // L'utilisateur existant pourrait avoir un profil mais la requête a échoué
+        if (profileError) {
+          console.error("[Auth Callback] Erreur lors de la lecture du profil:", profileError)
+          // En cas d'erreur, on laisse l'utilisateur aller au dashboard
+          // Le middleware vérifiera à nouveau avec une meilleure gestion d'erreur
+          return NextResponse.redirect(new URL(next, request.url))
+        }
+
+        // Rediriger vers onboarding UNIQUEMENT si :
+        // 1. Le profil n'existe vraiment pas (première connexion)
+        // 2. OU le profil existe mais full_name est vide (onboarding non terminé)
+        // Note: age est optionnel, on ne l'utilise pas pour décider de la redirection
+        const needsOnboarding = !profile || !profile.full_name || (profile.full_name.trim().length === 0)
+        
+        if (needsOnboarding) {
+          console.log("[Auth Callback] Profil incomplet, redirection vers onboarding")
           return NextResponse.redirect(new URL("/onboarding", request.url))
         }
       }
@@ -37,6 +53,7 @@ export async function GET(request: NextRequest) {
   // En cas d'erreur, rediriger vers la page de login
   return NextResponse.redirect(new URL("/login", request.url))
 }
+
 
 
 

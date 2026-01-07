@@ -8,8 +8,11 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
-import { Activity, Sparkles, Settings2, X, Loader2, Check, AlertCircle } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { Activity, Sparkles, Settings2, X, Loader2, Check, AlertCircle, Save } from "lucide-react"
+import { updateLiveFeedSettings, getLiveFeedSettings } from "@/app/actions/update-live-feed-settings"
 
 // Options de rythme de diffusion
 const REFRESH_RATE_OPTIONS = [
@@ -22,6 +25,7 @@ const REFRESH_RATE_OPTIONS = [
 type LiveFeedSettings = {
   mode: "auto" | "manual"
   refresh_rate: number
+  auto_refresh: boolean
   allowed_domains: string[]
   required_keywords: string[]
 }
@@ -30,11 +34,13 @@ export default function LiveFeedConfigPage() {
   const [settings, setSettings] = useState<LiveFeedSettings>({
     mode: "auto",
     refresh_rate: 900,
+    auto_refresh: true,
     allowed_domains: [],
     required_keywords: [],
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [domainInput, setDomainInput] = useState("")
   const [keywordInput, setKeywordInput] = useState("")
   const { toast } = useToast()
@@ -47,26 +53,13 @@ export default function LiveFeedConfigPage() {
 
   const loadSettings = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) return
-
-      const { data, error } = await supabase
-        .from("live_feed_settings")
-        .select("*")
-        .eq("user_id", user.id)
-        .single()
-
-      if (error && error.code !== "PGRST116") {
-        console.error("Error loading settings:", error)
-        return
-      }
+      const data = await getLiveFeedSettings()
 
       if (data) {
         setSettings({
-          mode: (data.mode as "auto" | "custom") === "custom" ? "manual" : "auto",
+          mode: data.mode === "custom" ? "manual" : "auto",
           refresh_rate: data.refresh_rate || 900,
+          auto_refresh: data.auto_refresh !== undefined ? data.auto_refresh : true,
           allowed_domains: data.custom_domains || [],
           required_keywords: data.custom_instructions
             ? data.custom_instructions.split(",").map((k: string) => k.trim()).filter(Boolean)
@@ -80,66 +73,59 @@ export default function LiveFeedConfigPage() {
     }
   }
 
-  // Sauvegarde automatique avec debounce
-  const saveSettings = useCallback(
-    async (newSettings: LiveFeedSettings) => {
-      setSaving(true)
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-        if (!user) throw new Error("Non authentifié")
+  // Sauvegarde explicite avec bouton
+  const handleSaveSettings = async () => {
+    setSaving(true)
+    try {
+      const settingsToSave = {
+        mode: settings.mode === "manual" ? "custom" : "auto",
+        refresh_rate: settings.refresh_rate,
+        auto_refresh: settings.auto_refresh,
+        custom_domains: settings.mode === "manual" ? settings.allowed_domains : [],
+        custom_instructions:
+          settings.mode === "manual" && settings.required_keywords.length > 0
+            ? settings.required_keywords.join(", ")
+            : undefined,
+      }
 
-        const settingsToSave = {
-          user_id: user.id,
-          mode: newSettings.mode === "manual" ? "custom" : "auto",
-          refresh_rate: newSettings.refresh_rate,
-          custom_domains: newSettings.mode === "manual" ? newSettings.allowed_domains : [],
-          custom_instructions:
-            newSettings.mode === "manual" && newSettings.required_keywords.length > 0
-              ? newSettings.required_keywords.join(", ")
-              : null,
-        }
+      const result = await updateLiveFeedSettings(settingsToSave)
 
-        const { error } = await supabase.from("live_feed_settings").upsert(settingsToSave, {
-          onConflict: "user_id",
-        })
-
-        if (error) throw error
-
-        // Toast discret pour la sauvegarde automatique
+      if (result.success) {
+        setHasUnsavedChanges(false)
         toast({
           title: "✅ Sauvegardé",
-          description: "Vos préférences ont été enregistrées.",
-          duration: 2000,
+          description: result.message,
+          duration: 3000,
         })
-      } catch (error) {
-        console.error("Save error:", error)
+      } else {
         toast({
           title: "❌ Erreur",
-          description: "Impossible de sauvegarder les paramètres.",
+          description: result.message,
           variant: "destructive",
         })
-      } finally {
-        setSaving(false)
       }
-    },
-    [supabase, toast]
-  )
+    } catch (error) {
+      console.error("Save error:", error)
+      toast({
+        title: "❌ Erreur",
+        description: "Impossible de sauvegarder les paramètres.",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
 
-  // Mettre à jour les settings et sauvegarder automatiquement
+  // Mettre à jour les settings localement (sans sauvegarde automatique)
   const updateSettings = useCallback(
     (updates: Partial<LiveFeedSettings>) => {
       setSettings((prevSettings) => {
         const newSettings = { ...prevSettings, ...updates }
-        // Sauvegarde avec un petit délai pour éviter trop de requêtes
-        setTimeout(() => {
-          saveSettings(newSettings)
-        }, 500)
+        setHasUnsavedChanges(true)
         return newSettings
       })
     },
-    [saveSettings]
+    []
   )
 
   // Ajouter un domaine
@@ -199,12 +185,31 @@ export default function LiveFeedConfigPage() {
             <p className="text-zinc-400">Personnalisez votre flux d'actualités en temps réel</p>
           </div>
         </div>
-        {saving && (
-          <div className="flex items-center gap-2 text-sm text-zinc-500 mt-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Sauvegarde en cours...</span>
-          </div>
-        )}
+        <div className="flex items-center justify-between mt-4">
+          {hasUnsavedChanges && (
+            <div className="flex items-center gap-2 text-sm text-amber-400">
+              <AlertCircle className="h-4 w-4" />
+              <span>Modifications non sauvegardées</span>
+            </div>
+          )}
+          <Button
+            onClick={handleSaveSettings}
+            disabled={saving || !hasUnsavedChanges}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Sauvegarde...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Sauvegarder les préférences
+              </>
+            )}
+          </Button>
+        </div>
       </motion.div>
 
       <div className="max-w-4xl mx-auto space-y-6">
@@ -427,6 +432,23 @@ export default function LiveFeedConfigPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
+              {/* Toggle Auto-refresh */}
+              <div className="flex items-center justify-between p-4 rounded-lg bg-zinc-950/50 border border-zinc-800">
+                <div className="flex-1">
+                  <Label htmlFor="auto-refresh" className="text-white font-medium">
+                    Rafraîchissement automatique
+                  </Label>
+                  <p className="text-sm text-zinc-400 mt-1">
+                    Active ou désactive le rafraîchissement automatique du flux
+                  </p>
+                </div>
+                <Switch
+                  id="auto-refresh"
+                  checked={settings.auto_refresh}
+                  onCheckedChange={(checked) => updateSettings({ auto_refresh: checked })}
+                />
+              </div>
+
               <Select
                 value={settings.refresh_rate.toString()}
                 onValueChange={(value) => updateSettings({ refresh_rate: parseInt(value) })}
@@ -490,6 +512,36 @@ export default function LiveFeedConfigPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Bouton de sauvegarde en bas de page */}
+        <div className="sticky bottom-0 bg-zinc-950/95 backdrop-blur-sm border-t border-zinc-800 p-6 -mx-8 -mb-8">
+          <div className="max-w-4xl mx-auto flex items-center justify-between">
+            {hasUnsavedChanges && (
+              <div className="flex items-center gap-2 text-sm text-amber-400">
+                <AlertCircle className="h-4 w-4" />
+                <span>Vous avez des modifications non sauvegardées</span>
+              </div>
+            )}
+            <Button
+              onClick={handleSaveSettings}
+              disabled={saving || !hasUnsavedChanges}
+              size="lg"
+              className="ml-auto bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Sauvegarde en cours...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Sauvegarder les préférences
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   )
