@@ -1,3 +1,7 @@
+export const dynamic = 'force-dynamic'; // <--- AJOUTE ÇA TOUT EN HAUT
+
+import { NextResponse } from 'next/server';
+// ... le reste de ton code
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma"; // Assure-toi que le chemin vers ton prisma est bon
 // import { auth } from "@/auth"; // Décommente si tu utilises NextAuth/Auth.js pour récupérer la session réelle
