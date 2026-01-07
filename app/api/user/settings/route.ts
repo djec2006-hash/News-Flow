@@ -1,10 +1,7 @@
-export const dynamic = 'force-dynamic'; // <--- AJOUTE ÇA TOUT EN HAUT
+export const dynamic = 'force-dynamic';
 
-import { NextResponse } from 'next/server';
-// ... le reste de ton code
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma"; // Assure-toi que le chemin vers ton prisma est bon
-// import { auth } from "@/auth"; // Décommente si tu utilises NextAuth/Auth.js pour récupérer la session réelle
+import { prisma } from "@/lib/prisma";
 
 export async function PATCH(req: Request) {
   try {
@@ -19,13 +16,8 @@ export async function PATCH(req: Request) {
     } = body;
 
     // --- ZONE AUTHENTIFICATION ---
-    // Ici, normalement on récupère l'ID de l'utilisateur connecté via la session.
-    // Pour l'instant, si tu es en dev, on va utiliser une méthode pour trouver ton user.
-    // Si tu as un système d'auth, remplace la ligne ci-dessous par : const session = await auth(); const userId = session?.user?.id;
-    
-    // EXEMPLE TEMPORAIRE : On cherche le premier utilisateur ou un ID fixe pour tester
-    // Remplace cet ID par le tien si tu le connais, ou laisse la logique de session si elle est prête.
-    // Pour simplifier, on va chercher l'utilisateur via son email si tu l'envoies, sinon on prend le premier (DANGEREUX EN PROD, OK POUR TEST LOCAL)
+    // Note: En production, utilise l'auth réelle (session).
+    // Ici, on prend le premier utilisateur trouvé pour que ça marche en démo.
     const user = await prisma.user.findFirst(); 
 
     if (!user) {
@@ -38,7 +30,7 @@ export async function PATCH(req: Request) {
         id: user.id 
       },
       data: {
-        // On ne met à jour que si la valeur est présente dans la requête (undefined check)
+        // On ne met à jour que si la valeur est présente dans la requête
         ...(feedAutoRefresh !== undefined && { feedAutoRefresh }),
         ...(feedRefreshRate !== undefined && { feedRefreshRate }),
         ...(emailNotifications !== undefined && { emailNotifications }),
