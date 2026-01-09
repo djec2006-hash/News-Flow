@@ -73,3 +73,5 @@ COMMENT ON COLUMN public.email_settings.recipients IS 'Liste des adresses email 
 
 
 
+
+

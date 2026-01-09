@@ -9,3 +9,5 @@ COMMENT ON COLUMN public.live_feed_settings.auto_refresh IS 'Active ou désactiv
 
 
 
+
+

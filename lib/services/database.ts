@@ -70,3 +70,5 @@ export async function getUserTopics(userId: string) {
   return data || []
 }
 
+
+
